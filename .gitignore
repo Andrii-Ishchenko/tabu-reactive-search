@@ -26,3 +26,11 @@
 *.exe
 *.out
 *.app
+tabu/Release/*.*
+tabu/Debug/*.*
+*.user
+*.filters
+*.suo
+Debug/*.*
+Release/*.*
+*.sdf
