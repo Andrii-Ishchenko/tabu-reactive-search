@@ -6,110 +6,240 @@
 #include <time.h>
 #include <string.h>
 
-FILE *data_file, *best_known_solution_file;
+FILE *file;
 char data_file_path[100],problem_name[100],file_suffix[100], path[100];
-long best_known_solution, n_edges, n_vertices;
-long **edges;
-long *keys,*f_values,*left,*right,*edge_w, *n_con_edges;
-long f_memory_count;
+long best_known_f, n_edges, n_vertices;
+long **edges;										//adjacency matrix for the problem
+long *keys, *f_values, *left, *right;				//arrays for storing search history
+long *last_used, *neighbourhood_values;		//the actual tabu list itself
+int *x, *best_x;									//configuration
+long f, best_f;										//f(x) ,f(best_x) 
+long rand_seed, step, max_steps, tabu_size;
+bool *neighbourhood;								// determines whether neighbourhood[i] can be moved.
 
 void main(){
-	unsigned long int_size, long_double_size, dimension;
-	long number_of_function_eval,number_f;
+#pragma region Variables
+	long  number_f;
 	long temp_vert1, temp_vert2, temp_weight;
+#pragma endregion
+
+#pragma region References
+	void initRandom();
+	bool runCondition();
+	void tabu();
+	double getStandardRandom();
+#pragma endregion
+
+#pragma region Fetch_Graph_Properties
 
 	strcpy_s(path, "d:\\data_maxcut\\G37_bks.txt");
-	fopen_s(&best_known_solution_file, path, "r");
-	fscanf(best_known_solution_file, "%ld\n", &best_known_solution);
-	fclose(best_known_solution_file);
+	fopen_s(&file, path, "r");
+	fscanf(file, "%ld\n", &best_known_f);
+	fclose(file);
 
 	strcpy_s(path, "d:\\data_maxcut\\G37.txt");
-	fopen_s(&data_file, path, "r");
-	fscanf(data_file, "%ld%ld", &n_vertices, &n_edges);
-	fclose(data_file);
+	fopen_s(&file, path, "r");
+	fscanf(file, "%ld%ld", &n_vertices, &n_edges);
+	fclose(file);
+
+#pragma endregion
 
 #pragma region Memory_Allocation
+	max_steps = 1000000;
 
-	int_size = sizeof(int);
-	long_double_size = sizeof(long double);
-	number_of_function_eval = 10e7;
-	dimension = number_of_function_eval;
+	x = (int *)calloc(n_vertices, sizeof(int));
+	if (x == NULL){
+		printf("It is not enough free memory for x\n");
+		goto NOT_ENOUGH_FREE_MEMORY;
+	}
 
-	keys = (long *)calloc(dimension, int_size);
+	best_x = (int *)calloc(n_vertices, sizeof(int));
+	if (x == NULL){
+		printf("It is not enough free memory for best_x\n");
+		goto NOT_ENOUGH_FREE_MEMORY;
+	}
+
+	last_used = (long *)calloc(n_vertices, sizeof(long));
+	if (last_used == NULL){
+		printf("It is not enough free memory for array last_used\n");
+		goto NOT_ENOUGH_FREE_MEMORY;
+	}
+
+	neighbourhood = (bool *)calloc(n_vertices, sizeof(bool));
+	if (neighbourhood == NULL){
+		printf("It is not enough free memory for array neighbourhood\n");
+		goto NOT_ENOUGH_FREE_MEMORY;
+	}
+
+	neighbourhood_values = (long *)calloc(n_vertices, sizeof(long));
+	if (neighbourhood_values == NULL){
+		printf("It is not enough free memory for array neighbourhood_values\n");
+		goto NOT_ENOUGH_FREE_MEMORY;
+	}
+
+	keys = (long *)calloc(max_steps , sizeof(long));
 	if (keys == NULL){
 		printf("It is not enough free memory for array keyar\n");
 		goto NOT_ENOUGH_FREE_MEMORY;
 	}
 
-	f_values = (long *)calloc(dimension, int_size);
+	f_values = (long *)calloc(max_steps, sizeof(long));
 	if (f_values == NULL){
 		printf("It is not enough free memory for array f_values\n");
 		goto NOT_ENOUGH_FREE_MEMORY;
 	}
 
-	left = (long *)calloc(dimension, int_size);
+	left = (long *)calloc(max_steps, sizeof(long));
 	if (left == NULL){
 		printf("It is not enough free memory for array left\n");
 		goto NOT_ENOUGH_FREE_MEMORY;
 	}
 
-	right = (long *)calloc(dimension, int_size);
+	right = (long *)calloc(max_steps, sizeof(long));
 	if (right == NULL){
 		printf("It is not enough free memory for array right\n");
 		goto NOT_ENOUGH_FREE_MEMORY;
 	}
 
-	edges =  (long **)malloc(n_vertices * sizeof(long *));
+	edges =  (long **)calloc(n_vertices, sizeof(long *));
 	if (edges == NULL){
 		printf("It is not enough free memory for array edges\n");
 		goto NOT_ENOUGH_FREE_MEMORY;
 	}
 
 	for (int i = 0; i < n_vertices; i++){
-		edges[i] =(long *) malloc(n_vertices * sizeof(long));
+		edges[i] =(long *) calloc(n_vertices , sizeof(long));
 		if (edges[i] == NULL){
 			printf("It is not enough free memory for array edges[i]\n");
 			goto NOT_ENOUGH_FREE_MEMORY;
 		}
 	}
 
-
-
-	dimension = n_edges + 1;
-	edge_w = (long *)calloc(dimension, int_size);
-	if (edge_w == NULL)goto NOT_ENOUGH_FREE_MEMORY;
-
-
-	dimension = n_vertices; +1;
-	n_con_edges = (long *)calloc(dimension, int_size);
-	if (n_con_edges == NULL)goto NOT_ENOUGH_FREE_MEMORY;
-
 #pragma endregion 
 
-	for (int i = 0; i < n_vertices; i++){
-		n_con_edges[i] = 0;
-	}
+#pragma region Fetching_Data
+	fopen_s(&file,"d:\\data_maxcut\\G37.txt", "r");
 
-	data_file = fopen("d:\\data_maxcut\\G37.txt", "r");
-	fscanf(data_file, "%ld%ld", &n_vertices, &n_edges);
+	fscanf(file, "%ld%ld", &n_vertices, &n_edges);
+
 	for (int i = 0; i < n_edges; i++){
-		fscanf(data_file, "%ld%ld%ld", &temp_vert1, &temp_vert2, &temp_weight);
+		fscanf(file, "%ld%ld%ld", &temp_vert1, &temp_vert2, &temp_weight);
 		temp_vert1--;
 		temp_vert2--;
-		edges[temp_vert1][temp_vert2] = temp_weight;
+		
 		edges[temp_vert2][temp_vert1] = temp_weight;
-		edge_w[i] = temp_weight; // 
-		n_con_edges[temp_vert1] ++;
-		n_con_edges[temp_vert2] ++;
-
+		if (temp_vert1 < temp_vert2){
+			edges[temp_vert1][temp_vert2] = temp_weight;
+		}
+		else {
+			edges[temp_vert2][temp_vert1] = temp_weight;
+		}		
 	}
 
+#pragma endregion
+
+#pragma region Initialization
+	initRandom();
+
+	step = max_steps-5; // 0!
+
+	tabu_size = (long) floor((double)n_vertices/2); // should be tuned
+
+	for (int i = 0; i < n_vertices; i++){	
+		last_used[i] = LONG_MIN;
+	}
+
+	for (int i = 0; i< n_vertices; i++){
+		if (getStandardRandom() > 0.5){
+			x[i] = 1;
+			best_x[i] = 1;
+		}
+		else{
+			x[i] = 0;
+			best_x[i] = 0;
+		}
+	}
+#pragma endregion
+	
+#pragma region Main_Loop
+
+	while (runCondition()){
+		tabu();
+	}
+
+#pragma endregion
+
+#pragma region Results
+	printf("Best F:%ld \n", best_f);
+	
+	if (best_f > best_known_f){
+		if (file != NULL)
+			fclose(file);
+
+		strcpy_s(path, "d:\\data_maxcut\\G37_bks.txt");
+		fopen_s(&file, path, "w");
+		fprintf_s(file, "%ld", best_f);
+		fclose(file);
+	}
+	
+	if (file != NULL)
+		fclose(file);
+
+	strcpy_s(path, "d:\\data_maxcut\\results\\result.txt");
+	fopen_s(&file, path, "a");
+	//fprintf_s(file, "\n DateTime: ", ...);
+	fprintf_s(file, "Best f :\t %ld\n", best_f);
+	fclose(file);
+#pragma endregion
 
 #pragma region NOT_ENOUGH_FREE_MEMORY
+	return;								// exit the program to prevent executing
 NOT_ENOUGH_FREE_MEMORY: ;
-
 #pragma endregion		
 }
+
+
+
+void tabu(	)
+{
+	printf("%ld\n", n_edges);
+	step++;
+}
+
+#pragma region Helper_Functions
+
+bool runCondition(){
+	return (step <= max_steps);
+}
+
+void copyX(char* source, char* destination, int length){
+	for (int i = 0; i < length; i++)
+		destination[i] = source[i];	
+}
+
+void initRandom(){
+	#define ia 843314861
+	#define ib 453816693
+	#define mic 1693666955
+	#define mmu 1073741824
+	#define psu 4.65661287307739258e-10
+	rand_seed = 90853;
+}
+
+double getRandom(){
+	rand_seed = rand_seed*ia;
+	if (rand_seed > mic)
+		rand_seed = (rand_seed - mmu) - mmu;
+	rand_seed = rand_seed + ib;
+	if (rand_seed < 0)
+		rand_seed = (rand_seed + mmu) + mmu;
+	return(rand_seed*psu);
+}
+
+double getStandardRandom(){
+	return (double)rand() / (double)RAND_MAX;
+}
+
 
 long save_solution(long key, long f, long *numbf, long *keyar, long *vfar,
 	long *left, long *right)
@@ -175,3 +305,5 @@ long check_solution(long key, long f, long *numbf, long *keyar, long *vfar,
 	}
 	return 0;
 }
+
+#pragma endregion
