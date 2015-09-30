@@ -7,15 +7,16 @@
 #include <string.h>
 
 FILE *file;
-char data_file_path[100],problem_name[100],file_suffix[100], path[100];
+char path[100];
 long best_known_f, n_edges, n_vertices;
-long **edges;										//adjacency matrix for the problem
+int **edges;										//adjacency matrix for the problem
 long *keys, *f_values, *left, *right;				//arrays for storing search history
-long *last_used, *neighbourhood_values;		//the actual tabu list itself
-int *x, *best_x;									//configuration
-long f, best_f;										//f(x) ,f(best_x) 
-long rand_seed, step, max_steps, tabu_size;
+long *last_used, *neighbourhood_values;				//the actual tabu list itself, list of f(x) for all neighbours
+long *x, *best_x;									//configuration
+long f, best_f, stored_f_count;						//f(x) ,f(best_x) , number of stored f in tree.
+long rand_seed, step,best_f_step, max_steps, tabu_size;
 bool *neighbourhood;								// determines whether neighbourhood[i] can be moved.
+double *hashes;
 
 void main(){
 #pragma region Variables
@@ -26,8 +27,9 @@ void main(){
 #pragma region References
 	void initRandom();
 	bool runCondition();
-	void tabu();
+	void tabu(long *f, long *x, long n_vertices, int** edges, long *step, long tabu_size, long *stored_f_count, bool *neighbourhood, long *neighbourhood_values, long *last_used, long *best_f, long *best_x);
 	double getStandardRandom();
+	long F(long *x, int** matrix);
 #pragma endregion
 
 #pragma region Fetch_Graph_Properties
@@ -47,108 +49,113 @@ void main(){
 #pragma region Memory_Allocation
 	max_steps = 1000000;
 
-	x = (int *)calloc(n_vertices, sizeof(int));
+	x = (long *)calloc(n_vertices, sizeof(long));
 	if (x == NULL){
 		printf("It is not enough free memory for x\n");
 		goto NOT_ENOUGH_FREE_MEMORY;
 	}
 
-	best_x = (int *)calloc(n_vertices, sizeof(int));
-	if (x == NULL){
-		printf("It is not enough free memory for best_x\n");
+	best_x = (long *)calloc(n_vertices, sizeof(long));
+if (x == NULL){
+	printf("It is not enough free memory for best_x\n");
+	goto NOT_ENOUGH_FREE_MEMORY;
+}
+
+last_used = (long *)calloc(n_vertices, sizeof(long));
+if (last_used == NULL){
+	printf("It is not enough free memory for array last_used\n");
+	goto NOT_ENOUGH_FREE_MEMORY;
+}
+
+neighbourhood = (bool *)calloc(n_vertices, sizeof(bool));
+if (neighbourhood == NULL){
+	printf("It is not enough free memory for array neighbourhood\n");
+	goto NOT_ENOUGH_FREE_MEMORY;
+}
+
+neighbourhood_values = (long *)calloc(n_vertices, sizeof(long));
+if (neighbourhood_values == NULL){
+	printf("It is not enough free memory for array neighbourhood_values\n");
+	goto NOT_ENOUGH_FREE_MEMORY;
+}
+
+keys = (long *)calloc(max_steps, sizeof(long));
+if (keys == NULL){
+	printf("It is not enough free memory for array keyar\n");
+	goto NOT_ENOUGH_FREE_MEMORY;
+}
+
+f_values = (long *)calloc(max_steps, sizeof(long));
+if (f_values == NULL){
+	printf("It is not enough free memory for array f_values\n");
+	goto NOT_ENOUGH_FREE_MEMORY;
+}
+
+left = (long *)calloc(max_steps, sizeof(long));
+if (left == NULL){
+	printf("It is not enough free memory for array left\n");
+	goto NOT_ENOUGH_FREE_MEMORY;
+}
+
+right = (long *)calloc(max_steps, sizeof(long));
+if (right == NULL){
+	printf("It is not enough free memory for array right\n");
+	goto NOT_ENOUGH_FREE_MEMORY;
+}
+
+hashes = (double *)calloc(n_vertices, sizeof(double));
+if (hashes == NULL){
+	printf("It is not enough free memory for array hashes\n");
+	goto NOT_ENOUGH_FREE_MEMORY;
+}
+
+edges = (int **)calloc(n_vertices, sizeof(int *));
+if (edges == NULL){
+	printf("It is not enough free memory for array edges\n");
+	goto NOT_ENOUGH_FREE_MEMORY;
+}
+
+for (int i = 0; i < n_vertices; i++){
+	edges[i] = (int *)calloc(n_vertices, sizeof(int));
+	if (edges[i] == NULL){
+		printf("It is not enough free memory for array edges[i]\n");
 		goto NOT_ENOUGH_FREE_MEMORY;
 	}
-
-	last_used = (long *)calloc(n_vertices, sizeof(long));
-	if (last_used == NULL){
-		printf("It is not enough free memory for array last_used\n");
-		goto NOT_ENOUGH_FREE_MEMORY;
-	}
-
-	neighbourhood = (bool *)calloc(n_vertices, sizeof(bool));
-	if (neighbourhood == NULL){
-		printf("It is not enough free memory for array neighbourhood\n");
-		goto NOT_ENOUGH_FREE_MEMORY;
-	}
-
-	neighbourhood_values = (long *)calloc(n_vertices, sizeof(long));
-	if (neighbourhood_values == NULL){
-		printf("It is not enough free memory for array neighbourhood_values\n");
-		goto NOT_ENOUGH_FREE_MEMORY;
-	}
-
-	keys = (long *)calloc(max_steps , sizeof(long));
-	if (keys == NULL){
-		printf("It is not enough free memory for array keyar\n");
-		goto NOT_ENOUGH_FREE_MEMORY;
-	}
-
-	f_values = (long *)calloc(max_steps, sizeof(long));
-	if (f_values == NULL){
-		printf("It is not enough free memory for array f_values\n");
-		goto NOT_ENOUGH_FREE_MEMORY;
-	}
-
-	left = (long *)calloc(max_steps, sizeof(long));
-	if (left == NULL){
-		printf("It is not enough free memory for array left\n");
-		goto NOT_ENOUGH_FREE_MEMORY;
-	}
-
-	right = (long *)calloc(max_steps, sizeof(long));
-	if (right == NULL){
-		printf("It is not enough free memory for array right\n");
-		goto NOT_ENOUGH_FREE_MEMORY;
-	}
-
-	edges =  (long **)calloc(n_vertices, sizeof(long *));
-	if (edges == NULL){
-		printf("It is not enough free memory for array edges\n");
-		goto NOT_ENOUGH_FREE_MEMORY;
-	}
-
-	for (int i = 0; i < n_vertices; i++){
-		edges[i] =(long *) calloc(n_vertices , sizeof(long));
-		if (edges[i] == NULL){
-			printf("It is not enough free memory for array edges[i]\n");
-			goto NOT_ENOUGH_FREE_MEMORY;
-		}
-	}
+}
 
 #pragma endregion 
 
 #pragma region Fetching_Data
-	fopen_s(&file,"d:\\data_maxcut\\G37.txt", "r");
+fopen_s(&file, "d:\\data_maxcut\\G37.txt", "r");
 
-	fscanf(file, "%ld%ld", &n_vertices, &n_edges);
+fscanf(file, "%ld%ld", &n_vertices, &n_edges);
 
-	for (int i = 0; i < n_edges; i++){
-		fscanf(file, "%ld%ld%ld", &temp_vert1, &temp_vert2, &temp_weight);
-		temp_vert1--;
-		temp_vert2--;
-		
-		edges[temp_vert2][temp_vert1] = temp_weight;
-		if (temp_vert1 < temp_vert2){
-			edges[temp_vert1][temp_vert2] = temp_weight;
-		}
-		else {
-			edges[temp_vert2][temp_vert1] = temp_weight;
-		}		
-	}
+for (int i = 0; i < n_edges; i++){
+	fscanf(file, "%ld%ld%ld", &temp_vert1, &temp_vert2, &temp_weight);
+	temp_vert1--;
+	temp_vert2--;
+	edges[temp_vert1][temp_vert2] = temp_weight;
+	edges[temp_vert2][temp_vert1] = temp_weight;
+	
+}
 
 #pragma endregion
 
 #pragma region Initialization
-	initRandom();
+initRandom();
 
-	step = max_steps-5; // 0!
+tabu_size = (long)floor((double)n_vertices -2); // i dont know how big it should be.
 
-	tabu_size = (long) floor((double)n_vertices/2); // should be tuned
+for (int i = 0; i < n_vertices; i++){
+	last_used[i] = -3*n_vertices;
+}
 
-	for (int i = 0; i < n_vertices; i++){	
-		last_used[i] = LONG_MIN;
-	}
 
+for(int i = 0; i < n_vertices; i++){
+	hashes[i] = getStandardRandom();
+}
+
+	//Generating random starting vector x;
 	for (int i = 0; i< n_vertices; i++){
 		if (getStandardRandom() > 0.5){
 			x[i] = 1;
@@ -159,12 +166,18 @@ void main(){
 			best_x[i] = 0;
 		}
 	}
+
+	//calculate f(x) and save as best known.
+	f = best_f = F(x, edges);
+	step = 0;
+	best_f_step = 0;
+	stored_f_count = 0;
 #pragma endregion
 	
 #pragma region Main_Loop
 
 	while (runCondition()){
-		tabu();
+		tabu(&f,x,n_vertices,edges,&step,tabu_size, &stored_f_count,neighbourhood, neighbourhood_values, last_used, &best_f, best_x);
 	}
 
 #pragma endregion
@@ -194,25 +207,74 @@ void main(){
 
 #pragma region NOT_ENOUGH_FREE_MEMORY
 	return;								// exit the program to prevent executing
-NOT_ENOUGH_FREE_MEMORY: ;
+NOT_ENOUGH_FREE_MEMORY: 
+	
+	;
 #pragma endregion		
 }
 
 
 
-void tabu(	)
+void tabu(long *f, long *x,long n_vertices,int** edges, long *step,long tabu_size,long *stored_f_count, bool *neighbourhood,long *neighbourhood_values, long *last_used,long *best_f, long *best_x)
 {
-	printf("%ld\n", n_edges);
-	step++;
+	long best_neighbour_index = -1 , best_neighbour_value = LONG_MIN;
+
+#pragma region References
+		void fetchNeighbourhood(bool* neighbours, long* last_used, long current_step, long tabu_size);
+		long F(long *x, long f, long index, int** matrix);
+		void copyX(long* source, long* destination, int length);
+#pragma endregion
+
+	*step=*step+1;
+
+	fetchNeighbourhood(neighbourhood, last_used, *step, tabu_size);
+
+	for (int i = 0; i < n_vertices; i++){
+		if (neighbourhood[i]){
+			x[i] = !x[i];
+			neighbourhood_values[i] = F(x,*f,i,edges);
+			x[i] = !x[i];
+
+			if (neighbourhood_values[i] >= best_neighbour_value)
+			{
+				best_neighbour_index = i;
+				best_neighbour_value = neighbourhood_values[i];
+			}
+		}
+	}
+
+	
+	if (best_neighbour_value >= *f)
+	{		
+		//If there is a step that can increase f, perform it, save value, and add to tabu list;
+		*f = best_neighbour_value;
+		x[best_neighbour_index] = !x[best_neighbour_index];
+		last_used[best_neighbour_index] = *step;
+		copyX(x, best_x, n_vertices);
+		
+		if (best_neighbour_value >= *best_f)
+		{
+			best_f_step = *step;
+			*best_f = best_neighbour_value;
+			printf("Step: %ld \tF: %ld\n", *step, *best_f);
+		}
+	}
+	else 
+	{
+		//local optimum
+		//need to diversificate search (make random steps)
+	}
+
+
 }
 
 #pragma region Helper_Functions
 
 bool runCondition(){
-	return (step <= max_steps);
+	return (step <= max_steps) ;
 }
 
-void copyX(char* source, char* destination, int length){
+void copyX(long* source, long* destination, int length){
 	for (int i = 0; i < length; i++)
 		destination[i] = source[i];	
 }
@@ -224,6 +286,7 @@ void initRandom(){
 	#define mmu 1073741824
 	#define psu 4.65661287307739258e-10
 	rand_seed = 90853;
+	srand(time(NULL));
 }
 
 double getRandom(){
@@ -240,6 +303,49 @@ double getStandardRandom(){
 	return (double)rand() / (double)RAND_MAX;
 }
 
+void clearArray(long* arr){
+	for (int i = 0; i, n_vertices; i++)
+		arr[i] = 0;
+}
+
+long getKey(long *x){
+	double key = 0;
+	for (int i = 0; i < n_vertices; i++){
+		if (x[i] == 1)
+			key += hashes[i];
+	}
+	return key;
+}
+
+void fetchNeighbourhood(bool* neighbours, long* last_used ,long current_step, long tabu_size){
+	for (int i = 0; i < n_vertices; i++){
+		if (current_step - last_used[i] < tabu_size)
+			neighbours[i] = false;
+		else
+			neighbours[i] = true;
+	}
+}
+
+long F(long *x, int** matrix){
+	long sum = 0;
+	for (int i = 0; i < n_vertices; i++){
+		for (int j = i + 1; j < n_vertices; j++){
+			sum += matrix[i][j] * x[i] * (1 - x[j]);
+		}
+	}
+	return sum;
+}
+
+long F(long *x, long f, long index, int** matrix){
+	long minus = 0, plus = 0;
+	long xi = x[index];
+	for (int j = 0; j < n_vertices; j++){
+		minus += matrix[index][j] *xi *(1 -  x[j]);
+		plus += matrix[index][j] *(!xi)*(1 - x[j]);		
+	}
+	return f - minus + plus;
+
+}
 
 long save_solution(long key, long f, long *numbf, long *keyar, long *vfar,
 	long *left, long *right)
