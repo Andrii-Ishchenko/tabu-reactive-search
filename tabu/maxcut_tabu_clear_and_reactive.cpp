@@ -14,7 +14,7 @@ long *keys, *f_values, *left, *right;				//arrays for storing search history
 long *last_used, *neighbourhood_values;				//the actual tabu list itself, list of f(x) for all neighbours
 long *x, *best_x;									//configuration
 long f, best_f, stored_f_count;						//f(x) ,f(best_x) , number of stored f in tree.
-long rand_seed, step,best_f_step, max_steps, tabu_size;
+long rand_seed, step,best_f_step,n_random_steps, max_steps, tabu_size;
 bool *neighbourhood;								// determines whether neighbourhood[i] can be moved.
 double *hashes;
 
@@ -144,7 +144,7 @@ for (int i = 0; i < n_edges; i++){
 #pragma region Initialization
 initRandom();
 
-tabu_size = (long)floor((double)n_vertices -2); // i dont know how big it should be.
+tabu_size = 21; // i dont know how big it should be.
 
 for (int i = 0; i < n_vertices; i++){
 	last_used[i] = -3*n_vertices;
@@ -172,6 +172,7 @@ for(int i = 0; i < n_vertices; i++){
 	step = 0;
 	best_f_step = 0;
 	stored_f_count = 0;
+	n_random_steps = static_cast<int>(n_vertices / 10);
 #pragma endregion
 	
 #pragma region Main_Loop
@@ -222,6 +223,7 @@ void tabu(long *f, long *x,long n_vertices,int** edges, long *step,long tabu_siz
 #pragma region References
 		void fetchNeighbourhood(bool* neighbours, long* last_used, long current_step, long tabu_size);
 		long F(long *x, long f, long index, int** matrix);
+		long F(long *x, int** matrix);
 		void copyX(long* source, long* destination, int length);
 #pragma endregion
 
@@ -231,9 +233,7 @@ void tabu(long *f, long *x,long n_vertices,int** edges, long *step,long tabu_siz
 
 	for (int i = 0; i < n_vertices; i++){
 		if (neighbourhood[i]){
-			x[i] = !x[i];
-			neighbourhood_values[i] = F(x,*f,i,edges);
-			x[i] = !x[i];
+			neighbourhood_values[i] = F(x, *f, i, edges);
 
 			if (neighbourhood_values[i] >= best_neighbour_value)
 			{
@@ -242,7 +242,6 @@ void tabu(long *f, long *x,long n_vertices,int** edges, long *step,long tabu_siz
 			}
 		}
 	}
-
 	
 	if (best_neighbour_value >= *f)
 	{		
@@ -256,13 +255,16 @@ void tabu(long *f, long *x,long n_vertices,int** edges, long *step,long tabu_siz
 		{
 			best_f_step = *step;
 			*best_f = best_neighbour_value;
-			printf("Step: %ld \tF: %ld\n", *step, *best_f);
+			printf("Step: %ld \t Best F: %ld \t F: %ld\n", *step, *best_f, F(x, edges));
+			
+			
 		}
 	}
 	else 
 	{
 		//local optimum
 		//need to diversificate search (make random steps)
+
 	}
 
 
@@ -287,6 +289,7 @@ void initRandom(){
 	#define psu 4.65661287307739258e-10
 	rand_seed = 90853;
 	srand(time(NULL));
+	
 }
 
 double getRandom(){
@@ -329,9 +332,11 @@ void fetchNeighbourhood(bool* neighbours, long* last_used ,long current_step, lo
 long F(long *x, int** matrix){
 	long sum = 0;
 	for (int i = 0; i < n_vertices; i++){
-		for (int j = i + 1; j < n_vertices; j++){
-			sum += matrix[i][j] * x[i] * (1 - x[j]);
-		}
+			for (int j = i + 1; j < n_vertices; j++){
+				sum += matrix[i][j]*(x[i] ^ x[j]);
+			}
+
+			
 	}
 	return sum;
 }
@@ -339,10 +344,12 @@ long F(long *x, int** matrix){
 long F(long *x, long f, long index, int** matrix){
 	long minus = 0, plus = 0;
 	long xi = x[index];
+	long nxi = !x[index];
 	for (int j = 0; j < n_vertices; j++){
-		minus += matrix[index][j] *xi *(1 -  x[j]);
-		plus += matrix[index][j] *(!xi)*(1 - x[j]);		
+		minus += matrix[index][j] * (xi ^ x[j]);
+		plus += matrix[index][j] * (nxi ^ x[j]);
 	}
+
 	return f - minus + plus;
 
 }
