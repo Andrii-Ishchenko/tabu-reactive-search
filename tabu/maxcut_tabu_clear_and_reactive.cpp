@@ -10,13 +10,13 @@ FILE *file;
 char path[100];
 long best_known_f, n_edges, n_vertices;
 int **edges;										//adjacency matrix for the problem
-long *keys, *f_values, *left, *right;				//arrays for storing search history
+long  *f_values, *left, *right, *occurence_time;				//arrays for storing search history
 long *last_used, *neighbourhood_values;				//the actual tabu list itself, list of f(x) for all neighbours
 long *x, *best_x;									//configuration
 long f, best_f, stored_f_count;						//f(x) ,f(best_x) , number of stored f in tree.
-long rand_seed, step,best_f_step,n_random_steps, max_steps, tabu_size;
+long rand_seed, step,best_f_step,n_random_steps, max_steps, tabu_size, tabu_change_t;
 bool *neighbourhood;								// determines whether neighbourhood[i] can be moved.
-double *hashes;
+double *hashes,*keys, x_key;
 
 void main(){
 #pragma region Variables
@@ -27,7 +27,11 @@ void main(){
 #pragma region References
 	void initRandom();
 	bool runCondition();
-	void tabu(long *f, long *x, long n_vertices, int** edges, long *step, long tabu_size, long *stored_f_count, bool *neighbourhood, long *neighbourhood_values, long *last_used, long *best_f, long *best_x);
+	double getKey(long *x);
+	void tabu(long *f, long *x, long n_vertices, int** edges, long *step, long max_steps, long tabu_size, long *stored_f_count, bool *neighbourhood, long *neighbourhood_values, long *last_used, long *best_f, long *best_x, long *best_f_step);
+	void reactive_tabu(long *f, long *x, double x_key, long n_vertices, int** edges, long *step, long max_steps, long *tabu_size, long *stored_f_count,
+		bool *neighbourhood, long *neighbourhood_values, long *last_used, long *best_f, long *best_x, long *best_f_step, long* tabu_change_t,
+		double* keys, long* f_values, long* left, long* right, long* occurence_time);
 	double getStandardRandom();
 	long F(long *x, int** matrix);
 #pragma endregion
@@ -79,7 +83,7 @@ if (neighbourhood_values == NULL){
 	goto NOT_ENOUGH_FREE_MEMORY;
 }
 
-keys = (long *)calloc(max_steps, sizeof(long));
+keys = (double *)calloc(max_steps, sizeof(double));
 if (keys == NULL){
 	printf("It is not enough free memory for array keyar\n");
 	goto NOT_ENOUGH_FREE_MEMORY;
@@ -100,6 +104,12 @@ if (left == NULL){
 right = (long *)calloc(max_steps, sizeof(long));
 if (right == NULL){
 	printf("It is not enough free memory for array right\n");
+	goto NOT_ENOUGH_FREE_MEMORY;
+}
+
+occurence_time = (long *)calloc(max_steps, sizeof(long));
+if (occurence_time == NULL){
+	printf("It is not enough free memory for array occurence_count\n");
 	goto NOT_ENOUGH_FREE_MEMORY;
 }
 
@@ -143,8 +153,7 @@ for (int i = 0; i < n_edges; i++){
 
 #pragma region Initialization
 initRandom();
-
-tabu_size = 21; // i dont know how big it should be.
+tabu_size = 21;//21; // i dont know how big it should be.
 
 for (int i = 0; i < n_vertices; i++){
 	last_used[i] = -3*n_vertices;
@@ -152,7 +161,7 @@ for (int i = 0; i < n_vertices; i++){
 
 
 for(int i = 0; i < n_vertices; i++){
-	hashes[i] = getStandardRandom();
+	hashes[i] = getStandardRandom()*100;
 }
 
 	//Generating random starting vector x;
@@ -169,16 +178,19 @@ for(int i = 0; i < n_vertices; i++){
 
 	//calculate f(x) and save as best known.
 	f = best_f = F(x, edges);
+	x_key = getKey(x);
 	step = 0;
 	best_f_step = 0;
 	stored_f_count = 0;
+	tabu_change_t = 0;
 	n_random_steps = static_cast<int>(n_vertices / 10);
 #pragma endregion
 	
 #pragma region Main_Loop
 
 	while (runCondition()){
-		tabu(&f,x,n_vertices,edges,&step,tabu_size, &stored_f_count,neighbourhood, neighbourhood_values, last_used, &best_f, best_x);
+		//tabu(&f,x,n_vertices,edges,&step,max_steps, tabu_size, &stored_f_count,neighbourhood, neighbourhood_values, last_used, &best_f, best_x,&best_f_step);
+		reactive_tabu(&f, x, x_key, n_vertices, edges, &step, max_steps, &tabu_size, &stored_f_count, neighbourhood, neighbourhood_values, last_used, &best_f, best_x, &best_f_step, &tabu_change_t, keys, f_values, left, right,occurence_time );
 	}
 
 #pragma endregion
@@ -216,7 +228,7 @@ NOT_ENOUGH_FREE_MEMORY:
 
 
 
-void tabu(long *f, long *x,long n_vertices,int** edges, long *step,long tabu_size,long *stored_f_count, bool *neighbourhood,long *neighbourhood_values, long *last_used,long *best_f, long *best_x)
+void tabu(long *f, long *x,long n_vertices,int** edges, long *step,long max_steps, long *tabu_size,long *stored_f_count, bool *neighbourhood,long *neighbourhood_values, long *last_used,long *best_f, long *best_x, long *best_f_step)
 {
 	long best_neighbour_index = -1 , best_neighbour_value = LONG_MIN;
 
@@ -224,12 +236,13 @@ void tabu(long *f, long *x,long n_vertices,int** edges, long *step,long tabu_siz
 		void fetchNeighbourhood(bool* neighbours, long* last_used, long current_step, long tabu_size);
 		long F(long *x, long f, long index, int** matrix);
 		long F(long *x, int** matrix);
+		double getKey(long *x);
 		void copyX(long* source, long* destination, int length);
 #pragma endregion
 
 	*step=*step+1;
 
-	fetchNeighbourhood(neighbourhood, last_used, *step, tabu_size);
+	fetchNeighbourhood(neighbourhood, last_used, *step, *tabu_size);
 
 	for (int i = 0; i < n_vertices; i++){
 		if (neighbourhood[i]){
@@ -243,28 +256,132 @@ void tabu(long *f, long *x,long n_vertices,int** edges, long *step,long tabu_siz
 		}
 	}
 	
+	*f = best_neighbour_value;
+	x[best_neighbour_index] = !x[best_neighbour_index];
+	last_used[best_neighbour_index] = *step;
+
+	if (*step %50 == 0){
+		printf("Step: %ld \t F: %ld \t Best F: %ld \t Key: %f \t Percent:%lf \n", *step,best_neighbour_value, *best_f, getKey(x), ((double)*step) / (max_steps));
+	}
+	
 	if (best_neighbour_value >= *f)
 	{		
 		//If there is a step that can increase f, perform it, save value, and add to tabu list;
-		*f = best_neighbour_value;
-		x[best_neighbour_index] = !x[best_neighbour_index];
-		last_used[best_neighbour_index] = *step;
+	
 		copyX(x, best_x, n_vertices);
 		
 		if (best_neighbour_value >= *best_f)
 		{
-			best_f_step = *step;
+			*best_f_step = *step;
 			*best_f = best_neighbour_value;
-			printf("Step: %ld \t Best F: %ld \t F: %ld\n", *step, *best_f, F(x, edges));
-			
-			
+			strcpy_s(path, "d:\\data_maxcut\\results\\result_x.txt");
+			fopen_s(&file, path, "w");
+		
+			fprintf_s(file, "F:%ld \t X:\n",best_neighbour_value);
+			for (int i = 0; i < n_vertices; i++)
+				fprintf_s(file, "%d", x[i]);
+			fclose(file);
 		}
 	}
 	else 
 	{
 		//local optimum
 		//need to diversificate search (make random steps)
+	}
 
+
+}
+
+void reactive_tabu(long *f, long *x, double x_key, long n_vertices, int** edges, long *step, long max_steps, long *tabu_size, long *stored_f_count,
+	bool *neighbourhood, long *neighbourhood_values, long *last_used, long *best_f, long *best_x, long *best_f_step, long* tabu_change_t,
+					double* keys, long* f_values, long* left, long* right, long* occurence_time){
+	long best_neighbour_index = -1, best_neighbour_value = LONG_MIN, node_index = 0, deltaVisitTime = 0;
+
+#pragma region References
+	void fetchNeighbourhood(bool* neighbours, long* last_used, long current_step, long tabu_size);
+	long F(long *x, long f, long index, int** matrix);
+	long F(long *x, int** matrix);
+
+	double getKey(long *x);
+	
+	long save_solution(double key, long f, long *numbf, double *keyar, long *vfar,
+		long *left, long *right, long * occurence_time, long step);
+	long check_solution(double key, long f, long *numbf, double *keyar, long *vfar,
+		long *left, long *right);
+	void Increase(long* tabu_size, long n_vertices);
+	void Decrease(long* tabu_size, long n_vertices);
+	void copyX(long* source, long* destination, int length);
+#pragma endregion
+
+	
+#pragma region Reaction
+	if (node_index = check_solution(x_key, *f, stored_f_count, keys, f_values, left, right)){
+		deltaVisitTime = *step - occurence_time[node_index];
+		occurence_time[node_index] = *step;
+			if (deltaVisitTime < 2 * n_vertices - 2){
+				*tabu_change_t = *step;
+				Increase(tabu_size, n_vertices);
+			}
+	}
+	else {
+		if (*step - *tabu_change_t > 100){
+			*tabu_change_t = *step;
+			Decrease(tabu_size, n_vertices);
+		}
+	}
+
+#pragma endregion
+
+	fetchNeighbourhood(neighbourhood, last_used, *step, *tabu_size);
+
+	*step = *step + 1;
+
+
+	for (int i = 0; i < n_vertices; i++){
+		if (neighbourhood[i]){
+			neighbourhood_values[i] = F(x, *f, i, edges);
+
+			if (neighbourhood_values[i] >= best_neighbour_value)
+			{
+				best_neighbour_index = i;
+				best_neighbour_value = neighbourhood_values[i];
+			}
+		}
+	}
+
+	*f = best_neighbour_value;
+	x[best_neighbour_index] = !x[best_neighbour_index];
+	last_used[best_neighbour_index] = *step;
+	x_key = getKey(x);
+	save_solution(x_key, *f, stored_f_count, keys,f_values,left,right,occurence_time,*step);
+
+	if (*step % 50 == 0){
+		printf("Step: %ld \t F: %ld \t Best F: %ld \t Key: %f \t Occurence: %ld, Tabu: %ld\n", *step, best_neighbour_value, *best_f, x_key,occurence_time[node_index], *tabu_size);
+	}
+
+	if (best_neighbour_value >= *f)
+	{
+		//If there is a step that can increase f, perform it, save value, and add to tabu list;
+
+		copyX(x, best_x, n_vertices);
+
+		if (best_neighbour_value >= *best_f)
+		{
+			*best_f_step = *step;
+			*best_f = best_neighbour_value;
+			strcpy_s(path, "d:\\data_maxcut\\results\\result_reactive_x.txt");
+			fopen_s(&file, path, "w");
+
+			fprintf_s(file, "F:%ld \t X:\n", best_neighbour_value);
+			for (int i = 0; i < n_vertices; i++)
+				fprintf_s(file, "%d", x[i]);
+			fclose(file);
+		}
+	}
+	else
+	{
+		//local optimum
+		//need to diversificate search (make random steps)
 	}
 
 
@@ -279,6 +396,14 @@ bool runCondition(){
 void copyX(long* source, long* destination, int length){
 	for (int i = 0; i < length; i++)
 		destination[i] = source[i];	
+}
+
+void Increase(long* tabu_size, long n_vertices){
+	*tabu_size =  (long)fmin( fmax(*tabu_size * 1.1, *tabu_size + 1), n_vertices - 2);
+}
+
+void Decrease(long* tabu_size, long n_vertices){
+	*tabu_size = (long)fmax(fmin(*tabu_size * 0.9,*tabu_size-1), 1);
 }
 
 void initRandom(){
@@ -311,7 +436,7 @@ void clearArray(long* arr){
 		arr[i] = 0;
 }
 
-long getKey(long *x){
+double getKey(long *x){
 	double key = 0;
 	for (int i = 0; i < n_vertices; i++){
 		if (x[i] == 1)
@@ -334,9 +459,7 @@ long F(long *x, int** matrix){
 	for (int i = 0; i < n_vertices; i++){
 			for (int j = i + 1; j < n_vertices; j++){
 				sum += matrix[i][j]*(x[i] ^ x[j]);
-			}
-
-			
+			}			
 	}
 	return sum;
 }
@@ -354,8 +477,8 @@ long F(long *x, long f, long index, int** matrix){
 
 }
 
-long save_solution(long key, long f, long *numbf, long *keyar, long *vfar,
-	long *left, long *right)
+long save_solution(double key, long f, long *numbf, double *keyar, long *vfar,
+	long *left, long *right, long * occurence_time, long step)
 {
 	long node, item;
 	if (*numbf == 0)
@@ -365,6 +488,7 @@ long save_solution(long key, long f, long *numbf, long *keyar, long *vfar,
 		vfar[*numbf] = f;
 		left[*numbf] = 0;
 		right[*numbf] = 0;
+		occurence_time[*numbf] = 0;
 	}
 	else
 	{
@@ -373,6 +497,7 @@ long save_solution(long key, long f, long *numbf, long *keyar, long *vfar,
 		{
 			if (keyar[node] == key && vfar[node] == f)
 			{
+				occurence_time[node]  = step;
 				return node;
 			}
 			else
@@ -385,7 +510,7 @@ long save_solution(long key, long f, long *numbf, long *keyar, long *vfar,
 		*numbf = *numbf + 1;
 		keyar[*numbf] = key;
 		vfar[*numbf] = f;
-		left[*numbf] = right[*numbf] = 0;
+		left[*numbf] = right[*numbf] = occurence_time[*numbf] =0;
 
 		if (keyar[item]>key)
 			left[item] = *numbf;
@@ -395,7 +520,7 @@ long save_solution(long key, long f, long *numbf, long *keyar, long *vfar,
 	return 0;
 }
 
-long check_solution(long key, long f, long *numbf, long *keyar, long *vfar,
+long check_solution(double key, long f, long *numbf, double *keyar, long *vfar,
 	long *left, long *right)
 {
 	long node, item;
@@ -418,5 +543,6 @@ long check_solution(long key, long f, long *numbf, long *keyar, long *vfar,
 	}
 	return 0;
 }
+
 
 #pragma endregion
