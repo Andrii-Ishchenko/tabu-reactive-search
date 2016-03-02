@@ -9,8 +9,8 @@
 long  aurd,nmy,n_point;
 long nfail,total_fmax,n_rep,max_n_iter,n_att,n_attr,n_attempt,maxn_attempt=243;//2163;//81;//27;//27;//81;
 long numb_th,kmax;
-long fix_f,natak,m_c,coef,fz,fzl,fzu;
-long *total_zz,*best_solution,*tabu_ar;
+long fix_f,natak,m_c,coef,fz,fzl;
+long *total_zz,*best_solution,*tabu_ar,*tabuf_ar,tabumin=21,tabumax=1000;
 //long start,end,istop;
 double start,beg,end;
 long double epsl=1.e-3,epsu=0.9999,arec_t;
@@ -18,15 +18,11 @@ char ngdir[100],dirm[100],indirm[100],text;
 long neqn,nVar,record_f,rr,n_edges;
 long *record_sol;
 long elite_size,max_elite_size,worst_member;
-long t_tabu=9,tabu_moves,tabu_att;//20
+long t_tabu=7,tabu_moves,tabu_att;//20
 long maxn_point=27,*best_freq;
-long double max_prob,min_prob,val_myu;
-char flg_foundrec;
 //int npoint;
-
 void xmain()
 {
-
 	void sort(long,long,long *,long double *);
     long double urand(void);
 	void sort_simple_ins(long *,long *,long double *);
@@ -48,18 +44,16 @@ void xmain()
 						long *left,long *right );
 	long check_solution(long key,long f,long *numbf,long *keyar,long *vfar,
 					long *left,long *right );
-	/*
 	void Random_1Opt_mod1(long *gg,long *moves,long *x,long *JA,long *JB,
 				 long *BN,long *diag_a,long *upmoves,long *key,long *chash,
 				 long numbf1,long *keyar1,long *vfar1,long *left1,long *right1,
 				 long *iv,long *gains,long *xprev,long *xbest,long *best_gains);
-	 */
-	//int EliteHandling_mode(long f,long *x,long *iv,
-	//				long *val_f_elite,long *key_elite,long *numf,
-	//				long *el_keyar,long *el_vfar,long *el_left,long *el_right,
-	//				long *chash,_int8 *elite_sol,long keyf,
-	//				long *gains,long *elite_gains,
-	//				long *sum_sat,long *elite_sum_sat);
+	int EliteHandling_mode(long f,long *x,long *iv,
+					long *val_f_elite,long *key_elite,long *numf,
+					long *el_keyar,long *el_vfar,long *el_left,long *el_right,
+					long *chash,_int8 *elite_sol,long keyf,
+					long *gains,long *elite_gains,
+					long *sum_sat,long *elite_sum_sat);
 	void CalcMaxCutGoalf(long *g,long *x,long *edge_wt,long *iv,
 						long *beg_list_edges_var,long *list_edges_var,long *list_nodes_var);
 	void CalcMaxCutGains(long j,long *g,long *x,long *edge_wt,
@@ -83,17 +77,17 @@ void xmain()
 	void MaxCutRandom_1_Opt(long *gg,long nmoves,long *moves,long *x,
 			long *key,long *chash,long *iv,long *gains,long *xbest,long *best_gains,
 			long *edge_wt,long *beg_list_edges_var,long *list_edges_var,long *list_nodes_var);
-	/*void MaxCutRandom_KOpt_mod2(long *gg,long nmoves,long *moves,long *x,
+	void MaxCutRandom_KOpt_mod2(long *gg,long nmoves,long *moves,long *x,
 			long *key,long *chash,
 			long *iv,long *gains,long *xbest,long *best_gains,
-			long *edge_wt,long *beg_list_edges_var,long *list_edges_var,long *list_nodes_var);*/
-	//void MaxCutRandom_Tabu(long *gg,long nmoves,long *moves,long *x,long *last_used,
-	//		long *key,long *chash,long *numbf,long *keyar,long *vfar,long *left,long *right,
-	//		long *iv,long *gains,long *xbest,long *best_gains,
-	//		long *edge_wt,long *beg_list_edges_var,long *list_edges_var,long *list_nodes_var,
-	//		long double *amyu,long *fmaxx,long *zz,long *f0max,long *f1max,
-	//		long double *sf,long double *nf,long double *sf1,long double *nf1,
-	//		long *key_maxx,long *gains_max);
+			long *edge_wt,long *beg_list_edges_var,long *list_edges_var,long *list_nodes_var);
+	void MaxCutRandom_Tabu(long *gg,long nmoves,long *moves,long *x,long *last_used,
+			long *key,long *chash,long *numbf,long *keyar,long *vfar,long *left,long *right,
+			long *iv,long *gains,long *xbest,long *best_gains,
+			long *edge_wt,long *beg_list_edges_var,long *list_edges_var,long *list_nodes_var,
+			long double *amyu,long *fmaxx,long *zz,long *f0max,long *f1max,
+			long double *sf,long double *nf,long double *sf1,long double *nf1,
+			long *key_maxx,long *gains_max);
 	void MaxCutRandom_Tabu1(long *gg,long nmoves,long *moves,long *x,long *last_used,
 			long *key,long *chash,long *numbf,long *keyar,long *vfar,long *left,long *right,
 			long *iv,long *gains,long *xbest,long *best_gains,
@@ -106,14 +100,13 @@ void xmain()
 				long double *amyu,long double *sf,long double *nf,
 				long double *sf1,long double *nf1,
 				long *f0max,long *f1max,long double *y0);
-	void MaxCutRandom_Tabu11(long *gg,long nmoves,long *moves,long *x,long *last_used,long *key,long *chash,long *numbf,long *keyar,long *vfar,long *left,long *right,
-			long *iv,long *gains,long *xbest,long *best_gains,long *edge_wt,long *beg_list_edges_var,long *list_edges_var,long *list_nodes_var,
-			long double *amyu,long *fmaxx,long *zz,long *f0max,long *f1max,long double *sf,long double *nf,long double *sf1,long double *nf1,long *key_maxx,long *gains_max);
-	void MaxCutRandom_Tabu13(long *gg,long nmoves,long *moves,long *x,long *last_used,long *key,long *chash,long *numbf,long *keyar,long *vfar,long *left,long *right,
-			long *iv,long *gains,long *xbest,long *best_gains,long *edge_wt,long *beg_list_edges_var,long *list_edges_var,long *list_nodes_var,
-			long double *amyu,long *fmaxx,long *zz,long *f0max,long *f1max,long double *sf,long double *nf,long double *sf1,long double *nf1,long *key_maxx,long *gains_max);
-	void CalcProb3(long nmyu,long *iv,long double *y,long double *amyu,long double *sf,long double *nf,
-				long double *sf1,long double *nf1,long *f0max,long *f1max,long double *y0);
+	void MaxCutRandom_Tabu1Mod(long *gg,long nmoves,long *moves,long *x,long *last_used,
+			long *key,long *chash,long *numbf,long *keyar,long *vfar,long *left,long *right,
+			long *iv,long *gains,long *xbest,long *best_gains,
+			long *edge_wt,long *beg_list_edges_var,long *list_edges_var,long *list_nodes_var,
+			long double *amyu,long *fmaxx,long *zz,long *f0max,long *f1max,
+			long double *sf,long double *nf,long double *sf1,long double *nf1,
+			long *key_maxx,long *gains_max);
 
      extern long aurd;
      FILE *fi,*fi_MaxCut,*fi7;
@@ -137,7 +130,7 @@ void xmain()
 	 char cc,dir1[100],dir[50],indir[50],dir3[50],dir_file[100],flg_rep;
 	int npoint;	
 	epsl=1.e-3,epsu=1.-epsl;
-	strcpy_s(dir_file,"d:\\data_maxcut\\G37name.txt");
+	strcpy_s(dir_file,"d:\\data_maxcut\\problem_name.txt");
 	fopen_s(&fi_MaxCut,dir_file,"r");
 	for (i=0; i<50; i++)
 	{
@@ -153,38 +146,39 @@ void xmain()
 
 	strcpy_s(indirm,"_bks.txt");
 	//strcpy_s(indirm,"_bks_Resende.txt");
-	strcpy_s(dirm,"d:\\data_maxcut\\");
+	strcpy_s(dirm,"d:\\data_MaxCut\\benchmarks\\");
 	strcat(dirm,ngdir);
 	strcat(dirm,indirm);
 	fopen_s(&fi,dirm,"r");
 	fscanf(fi,"%ld\n",&fz);
 	fclose(fi);
 
-	strcpy_s(indirm,"_bksl.txt");
+	/*strcpy_s(indirm,"_bksl.txt");
 	//strcpy_s(indirm,"_bks_Resende.txt");
-	strcpy_s(dirm,"d:\\data_maxcut\\");
+	strcpy_s(dirm,"d:\\data_MaxCut\\benchmarks\\");
 	strcat(dirm,ngdir);
 	strcat(dirm,indirm);
 	fopen_s(&fi,dirm,"r");
 	fscanf(fi,"%ld\n",&fzl);
-	fclose(fi);
+	fclose(fi);*/
 
-	//fzl=fz+100;
-	fzu=fzl;//=fz;
+	fzl=fz+100;
+	fzl=fz;
+	
 	//fz=fz++;
 	//fz=5507000;
 	//fz=3923752;
 	
 
 	strcpy_s(indirm,".txt");
-	strcpy_s(dirm,"d:\\data_maxcut\\");
+	strcpy_s(dirm,"d:\\data_MaxCut\\benchmarks\\");
 	strcat(dirm,ngdir);
 	strcat(dirm,indirm);
 	fi=fopen(dirm,"r");
 	fscanf(fi,"%ld%ld",&neqn,&n_edges);	
 	fclose(fi);
 
-	strcpy_s(dirm,"d:\\data_maxcut\\unknown_file\\");
+	strcpy_s(dirm,"d:\\data_MaxCut\\res\\protokol_maxcut_GES_Tabu_ex_newsmod1pr1un_");
 	strcat(dirm,ngdir);
 	strcat(dirm,indirm);
 	fopen_s(&fi7,dirm,"w");
@@ -197,6 +191,8 @@ void xmain()
 	nfeval=10000000;
 	//nfeval1=1250000;
 	long cn_alg,cm_c,c_a_fmax;
+	rsize=sizeof(long double);
+    isize=sizeof(long);
 	long n_moves;
 	m_c=1;
 	 
@@ -233,7 +229,6 @@ void xmain()
 
 	key_ex_ar=(long *)  calloc(dim,isize);
     if (key_ex_ar==NULL)goto LEND;
-
 	f_ex_ar=(long *)  calloc(dim,isize);
     if (f_ex_ar==NULL)goto LEND;
 	 
@@ -284,18 +279,13 @@ void xmain()
        printf("It is not enough free memory for array chash\n");
        goto LEND;
     }
-
 	n_con_edges=(long *)  calloc(dim,isize);
 	if (n_con_edges==NULL)goto LEND;
 
 	xz=(long *)  calloc(dim,isize);
     if (xz==NULL)goto LEND;
-
 	best_solution=(long *)  calloc(dim,isize);
     if (best_solution==NULL)goto LEND;
-
-	tabu_ar=(long *)  calloc(dim,isize);
-    if (tabu_ar==NULL)goto LEND;
 
     yz=(long *)  calloc(dim,isize);
     if (yz==NULL)
@@ -362,12 +352,14 @@ void xmain()
     }
 	gains=(long *)  calloc(dim,isize);
     if (gains==NULL)goto LEND;
-
 	xbest=(long *)  calloc(dim,isize);
     if (xbest==NULL)goto LEND;
-
 	last_used=(long *)  calloc(dim,isize);
     if (last_used==NULL)goto LEND;
+	tabu_ar=(long *)  calloc(dim,isize);
+    if (tabu_ar==NULL)goto LEND;
+	tabuf_ar=(long *)  calloc(dim,isize);
+    if (tabuf_ar==NULL)goto LEND;
 
 	long double *radius;
 	dim=npoint+1;
@@ -401,15 +393,15 @@ void xmain()
 		printf("It is not enough free memory for array nf1\n");
 		goto LEND;
 	}
-	npoint=50;//26;//31;
+	/*npoint=21;//26;//31;
 	radius[0]=0.5*neqn;	
 	radius[npoint-1]=20.0;
 	s=(10.0-radius[0])/(npoint-1);
 	for (i=1; i<npoint-1; i++)
 	{
 		radius[i]=i*s+radius[0];
-		i=i; /// ???????????????
-	}
+		i=i;
+	}*/
 	
 	aurd=90853; 
 	v=1000.0;
@@ -440,13 +432,11 @@ void xmain()
     if (gains_max==NULL)goto LEND;
 	gains_mem=(long *)  calloc(dim,isize);
     if (gains_mem==NULL)goto LEND;
-
 	long kv,*beg_list_edges_var,*list_edges_var,*list_nodes_var;
 
 	dim=n_edges+1;
 	edge_wt=(long *)  calloc(dim,isize);
 	if (edge_wt==NULL)goto LEND;
-
 	sum_sat=(long *)  calloc(dim,isize);
 	if (sum_sat==NULL)goto LEND;
 	
@@ -459,29 +449,18 @@ void xmain()
 	//coef=1;
 	fz=fz*coef;
 	fzl=fzl*coef;
-	fzu=fzu*coef;
 
 	strcpy_s(indirm,".txt");
-	strcpy_s(dirm,"d:\\data_maxcut\\");
+	strcpy_s(dirm,"d:\\data_MaxCut\\benchmarks\\");
 	strcat(dirm,ngdir);
 	strcat(dirm,indirm);
 
-	for (j=0; j<neqn; j++)
-		n_con_edges[j]=0;
-
+	for (j=0; j<neqn; j++)n_con_edges[j]=0;
 	fi=fopen(dirm,"r");
-	//Read number of equations and edges from 1rst line of file
 	fscanf(fi,"%ld%ld",&neqn,&n_edges);
-
-	//Consequently read 3 numbers from file(k,l,i) - first and second vertices of edge and its weight
-	//then indices are being normalized  to 0
-	// increase numbers of con... edges for k and l vertices
-	//put weight to array of weights for j edge.
-	k = 0; l = 0; i = 0;
 	for (j=0; j<n_edges; j++)
 	{
-		fscanf(fi,"%d %d %d",&k,&l,&i); 
-		k--; l--;
+		fscanf(fi,"%ld%ld%ld",&k,&l,&i); k--; l--;
 		edge_wt[j]=i;
 		n_con_edges[k]++; n_con_edges[l]++;
 	}
@@ -522,7 +501,7 @@ void xmain()
 
 	long gain,n_thr,keyf,mem,dist,df,df15[10],df20[10],f15[10],f20[10],n_cyc,
 		old_fmax,max_dist,max_natak;
-	long double e_dist,starttime,fintime,t_time,mean_t,mean_f,delta;
+	long double e_dist,starttime,fintime,t_time,mean_t,mean_f;
 /*===================================================================*/
 	ij=0; max_natak=20; t_time=0.0;
 	for (j=0; j<neqn; j++)moves[j]=j;
@@ -580,9 +559,8 @@ void xmain()
 			iv[j]=j;
 			y[j]=0.5; y0[j]=0.5; 
 		}
-		for (j=0; j<neqn; j++)moves[j]=j;
 		//max_dist=50;
-		max_dist=neqn/2;
+		max_dist=neqn/2;//3;
 		
 		nVar=neqn;
 		//n_point=0;
@@ -594,27 +572,20 @@ void xmain()
 		//df20=0;
 		n_ex=0;
 //==================================================================================
-BEG:;	aurd=natak*333+777777*n_attempt+5;
+BEG:;	aurd=natak*777+777777*n_attempt+7;
 		InitSetting(iv,npoint,&fmax,yz,zz,f0max,f1max,sf,nf,sf1,nf1);
 		numbf1=numbf=0;	
 		for (jv=0; jv<n_ex; jv++)
 		{
 			mem_solution(key_ex_ar[jv],f_ex_ar[jv],&numbf,keyar,vfar,left,right);
 		}
-
 		for (j=0; j<nVar; j++)
 		{
 			iv[j]=j; moves[j]=j;
-
-			if (urand()<0.5)
-				xz[j]=team_zz[j]=yz[j]=0;
-			else 
-				xz[j]=team_zz[j]=yz[j]=1;
+			if (urand()<0.5)xz[j]=team_zz[j]=yz[j]=0;
+			else xz[j]=team_zz[j]=yz[j]=1;
+			tabu_ar[j]=tabuf_ar[j]=tabumin;
 		}
-
-		for (j=0; j<neqn; j++)
-			moves[j]=j;
-
 		max_dist=neqn/2;///3;
 		f=team_fmax=key=0;
 		n_moves=nVar;
@@ -637,8 +608,8 @@ BEG:;	aurd=natak*333+777777*n_attempt+5;
 		}
 		key=i;
 
-		nmy=nmyu=0;
-		MaxCutRandom_Tabu11(&f,n_moves,moves,xz,last_used,
+		nmy=nmyu=0;//Mod
+		MaxCutRandom_Tabu1(&f,n_moves,moves,xz,last_used,
 							&key,chash,&numbf,keyar,vfar,left,right,
 							iv,gains,xbest,best_gains,edge_wt,
 							beg_list_edges_var,list_edges_var,list_nodes_var,
@@ -697,54 +668,45 @@ BEG:;	aurd=natak*333+777777*n_attempt+5;
 CCC:;
 		n_rep++;
 		
-		aurd=natak*55555+3333333*n_attempt+7;
+		aurd=natak*333+3333333*n_attempt+3;
 		nmyu=nmyu0=0;
 		oldrecord_f=fmax;
-		for (j=0; j<nVar; j++)
+		for (jv=0; jv<nVar; jv++)
 		{
-			//j=iv[jv];
+			j=iv[jv];
 			y[j]=y0[j];
-			iv[j]=j;
 		}
-		max_prob=min_prob=0.5;
-		delta=0.05;
-		flg_foundrec=0;
+
 		while(nmyu<npoint)
 		//while(nmyu<23)
 		{
-			
 			if (nmyu>0)
 			{
 				v_nmyu=nmyu-1;
-				//CalcProb(v_nmyu,iv,y,amyu,sf,nf,sf1,nf1,f0max,f1max,y0);
-				if (flg_foundrec==0)
+				CalcProb(v_nmyu,iv,y,amyu,sf,nf,sf1,nf1,f0max,f1max,y0);
+				//CalcProb1(nmyu,iv,y,amyu,sf,nf,sf1,nf1,f0max,f1max,y0);
+				/*for (jv=0; jv<nVar; jv++)
 				{
-					numthri=81;
-					min_prob=min_prob-delta;
-					max_prob=max_prob+delta;
-					delta=delta*0.86;
-					nmyu++;
-					if (nmyu>=npoint)break;
+					j=iv[jv];
+					y[j]=y0[j];
 				}
-				else
+				if (nmyu==20 || nmyu==40)
 				{
-					numthri=243;
-				}
-				if (max_prob>0.9 || min_prob<0.1)break;
-				CalcProb3(v_nmyu,iv,y,amyu,sf,nf,sf1,nf1,f0max,f1max,y0);
+					nmyu=nmyu;
+				}*/
+
 			}
 			else
 			{
-				for (j=0; j<neqn; j++)
+				for (jv=0; jv<nVar; jv++)
 				{
-					//j=iv[jv];
+					j=iv[jv];
 					y[j]=y0[j];
+					tabu_ar[j]=tabuf_ar[j]=tabumin;
 				}
-				nmyu=1;
-				numthri=81;
 			}
 			nmy=nmyu;
-			flg_foundrec=0;
+			
 			//numthri=neqn;
 			//if (nmyu<=18)numthri=50;
 			//else numthri=100;
@@ -752,7 +714,7 @@ CCC:;
 			//numthri=numthri*n_rep;
 
 			//numthri=500;//300
-			//50;//81;//81;//243;//81;//300
+			numthri=81;//50;//81;//81;//243;//81;//300
 
 			//numthri=243;
 			//if (nmyu>=15)numthri=700;//500
@@ -779,12 +741,11 @@ CCC:;
 			e_dist=0.0;
 			n_thr=0;//-1
 			old_fmax=fmax;
-			for (j=0; j<nVar; j++)
+			for (jv=0; jv<nVar; jv++)
 			{
-				//j=iv[jv];
+				j=iv[jv];
 				wt_ar[j]=-fabs(double(y[j]-0.5));
 				//wt_ar[j]=fabs(double(y[j]-0.5));
-				iv[j]=j;
 			}
 			for (jv=nVar-1; jv>0; jv--)
 			{
@@ -820,6 +781,7 @@ CCC:;
 					if (zz[j]==0)
 					{
 						if (urand()<=y[j])
+						//if (urand()<=0.5)
 						{
 							ReCalcMaxCutGains(j,gains,yz,edge_wt,iv,
 								beg_list_edges_var,list_edges_var,list_nodes_var);
@@ -853,6 +815,7 @@ CCC:;
 					else
 					{
 						if (urand()>y[j])
+						//if (urand()>0.5)
 						{
 							ReCalcMaxCutGains(j,gains,yz,edge_wt,iv,
 								beg_list_edges_var,list_edges_var,list_nodes_var);
@@ -887,6 +850,7 @@ CCC:;
 					//if (dist>max_dist)break;
 
 					if (dist>radius[nmyu])break;
+
 				}
 				e_dist=e_dist+dist;
 				//mem=check_solution(f,key,&numbf,keyar,vfar,left,right);
@@ -900,7 +864,7 @@ CCC:;
 				{
 					printf("ERROR in value f\n");
 				}*/
-				MaxCutRandom_Tabu11(&f,n_moves,moves,yz,last_used,
+				MaxCutRandom_Tabu1Mod(&f,n_moves,moves,yz,last_used,
 							&key,chash,&numbf,keyar,vfar,left,right,
 							iv,gains,xbest,best_gains,edge_wt,
 							beg_list_edges_var,list_edges_var,list_nodes_var,
@@ -965,7 +929,7 @@ CCC:;
 				for (i=n_cyc+1; i<9; i++)k=k+df20[i];
 				//if (fmax/coef<record_f/coef-k && n_attempt>9)break;// && n_cyc>0)
 			}*/
-			//nmyu++;
+			nmyu++;
 		}
 		//if (df15[n_cyc]<fmax/coef-f15[n_cyc]/coef)df15[n_cyc]=fmax/coef-f15[n_cyc]/coef;
 		//if (df20[n_cyc]<fmax/coef-f20[n_cyc]/coef)df20[n_cyc]=fmax/coef-f20[n_cyc]/coef;
@@ -980,7 +944,7 @@ CCC:;
 		//}
 	//	else flg_rep=0;		
 		k=0;
-		for (i=n_cyc+1; i<9; i++)k=k+df20[i];
+		//for (i=n_cyc+1; i<9; i++)k=k+df20[i];
 		
 		//if (n_attempt<=9 && k<3)k=3;
 		if (k<3)k=3;
@@ -1036,8 +1000,8 @@ CCC:;
 		printf("time:%9.1Lf record_f=%ld n_attempt=%ld numbf=%ld n_ex=%ld\n",
 			(fintime-starttime),record_f/coef,n_attempt,numbf,n_ex);
 		n_attempt++;
-		//if ( n_attempt<=maxn_attempt && (fintime-starttime)<=1800.0 )goto BEG;
-		if ( (fintime-starttime)<=1800.0 )goto BEG;
+		//if ( n_attempt<=maxn_attempt && (fintime-starttime)<=360.0 )goto BEG;
+		if ( (fintime-starttime)<=3600.0 )goto BEG;
 		//if ( n_attempt<=maxn_attempt )goto BEG;
 
 
@@ -1053,9 +1017,9 @@ SOL:;
 		for (j=0; j<neqn; j++)yz[j]=record_sol[j];
 
 		strcpy_s(indir,".txt");
-		strcpy_s(dir1,"d:\\data_maxcut\\results\\");
+		strcpy_s(dir1,"d:\\data_MaxCut\\results\\");
 		strcat(dir1,ngdir);
-		strcat(dir1,"_results_table_maxcut_GES_tabu_nprob_modpr7.txt");
+		strcat(dir1,"_results_table_maxcut_GES_Tabu_ex_newsmod1pr1un.txt");
 		fi=fopen(dir1,"a+");
 		CalcMaxCutGoalf(&i,yz,edge_wt,iv,
 						beg_list_edges_var,list_edges_var,list_nodes_var);
@@ -1065,7 +1029,7 @@ SOL:;
 			fprintf(fi,"ERROR in value f\n");
 		}
 		fprintf(fi," %3ld %9.2Lf %8.3f %8.3lf %9ld %9ld %9.6Lf %3ld %3ld\n",
-		natak,arec_t,(end-start),(fintime-starttime),record_f/coef,fzl/coef,100.0*(double)(fz-record_f)/(double)fz,n_attr,kmax);
+		natak,arec_t,(end-start),(fintime-starttime),record_f/coef,fz/coef,100.0*(double)(fz-record_f)/(double)fz,n_attr,kmax);
 		if (natak==max_natak)
 		{
 			fprintf(fi,"%9.2Lf %12.2Lf\n",mean_t/max_natak,mean_f/natak);
@@ -1073,9 +1037,9 @@ SOL:;
 		fclose(fi);
 
 		strcpy_s(indir,".txt");
-		strcpy_s(dir1,"d:\\data_maxcut\\results\\");
+		strcpy_s(dir1,"d:\\data_MaxCut\\results\\");
 		strcat(dir1,ngdir);
-		strcat(dir1,"_results_solutions_maxcut_GES_tabu_nprob_modpr7.txt");
+		strcat(dir1,"_results_solutions_maxcut_GES_Tabu_ex_newsmod1pr1un.txt");
 		fi=fopen(dir1,"a+");
 		for (j=0; j<neqn; j++)fprintf(fi," %ld",record_sol[j]);
 		fprintf(fi,"\n");
@@ -1083,9 +1047,9 @@ SOL:;
 
 	  }
 		strcpy_s(indir,".txt");
-		strcpy_s(dir1,"d:\\data_maxcut\\results\\");
+		strcpy_s(dir1,"d:\\data_MaxCut\\results\\");
 		strcat(dir1,ngdir);
-		strcat(dir1,"_results_solutions_maxcut_GES_tabu_nprob_modpr7.txt");
+		strcat(dir1,"_results_solutions_maxcut_GES_Tabu_ex_newsmod1pr1un.txt");
 		fi=fopen(dir1,"a+");
 		for (j=0; j<numthri; j++)fprintf(fi," %ld %ld\n",j,best_freq[j]);
 		fclose(fi);
@@ -1093,17 +1057,13 @@ SOL:;
 LEND:;
      
 }
-
 /*-------------------------------------------------------------------*/
       #define ia 843314861
       #define ib 453816693
       #define mic 1693666955
       #define mmu 1073741824
       #define psu 4.65661287307739258e-10
-
-
-/* RETURN RANDOM DOUBLE[0;1] */
-long double urand()
+      long double urand()
        {
         aurd=aurd*ia;
         if ( aurd > mic )aurd=(aurd-mmu)-mmu;
@@ -1111,9 +1071,74 @@ long double urand()
         if ( aurd < 0 )aurd=(aurd+mmu)+mmu;
         return(aurd*psu);
        }
+	long double ferf(long double xv)
+    {
+		long double  y,z,p,x;
+        x=fabs(xv);
+        y=1.0/(1.0+0.3275911*x);
+        z=( ( 1.0614054*y-1.453152 )*y+1.4214137 )*y;
+        z=( ( ( z-0.28449673 )*y+0.2548295 )*y )/exp( x*x );
+        y=1.0/( 1.0+0.2316419*x );
+        p=exp( -x*x/2.0 )/2.50662827;
+        z=( (1.3302744*y-1.821256 )*y+1.7814779 )*y;
+        z=1.0-( ( ( z-0.35656378 )*y+0.31938153 )*y )*p;
+        if ( xv>=0.0 ) return(1.0-z);
+        else return(z);
+	}
+	void integry(long neqn,long nmyu,long *iv,long double *y,
+				long double *amyu,long double *sf,long double *nf,
+				long double *sf1,long double *nf1,
+				long *f0max,long *f1max,long double *y0
+				)
+	{
+		long i,j,jv,ii,jj;
+		long double s,v,w,u;
+		for (jv=0; jv<neqn; jv++)
+		{
+			j=iv[jv];
+			s=0.0; ii=0;
+			for (i=0; i<=nmyu; i++)
+			{
+				jj=ii+j;
+				if (nf1[jj]>1.e-12 && nf[i]-nf1[jj]>1.e-12)
+				{
+					v=sf1[jj]/nf1[jj];
+					if (v>f1max[j])v=f1max[j];
+					w=(sf[i]-sf1[jj])/(nf[i]-nf1[jj]);
+					if (w>f0max[j])w=f0max[j];
+				}
+				else 
+				{
+					v=f1max[j];
+					w=f0max[j];
+				}
+						
+				u=w-v;
 
-/*SAVES SOLUTION. */
-long mem_solution(long key,long *numbf,long *keyar,long *left,long *right )
+				jj=jj+neqn;
+				if (nf1[jj]>1.e-12 && nf[i+1]-nf1[jj]>1.e-12)
+				{
+					v=sf1[jj]/nf1[jj];
+					if (v>f1max[j])v=f1max[j];
+					w=(sf[i+1]-sf1[jj])/(nf[i+1]-nf1[jj]);
+					if (w>f0max[j])w=f0max[j];
+				}
+				else
+				{
+					v=f1max[j];
+					w=f0max[j];
+				}
+						
+				u=0.5*(u+w-v);
+				s=s+(amyu[i+1]-amyu[i])*u;
+				ii=ii+neqn;
+			}
+			y[j]=1.0/(1.0+(1.0-y0[j])*exp(s)/y0[j] );
+			if (y[j]>epsu)y[j]=epsu;
+			if (y[j]<epsl)y[j]=epsl;
+		}
+	}
+	long mem_solution(long key,long *numbf,long *keyar,long *left,long *right )
 	{
 		long node,item;
 		long uk=0;
@@ -1143,16 +1168,36 @@ long mem_solution(long key,long *numbf,long *keyar,long *left,long *right )
 			*numbf=*numbf+1;
 			keyar[*numbf]=key;
 			left[*numbf]=right[*numbf]=0;
-			if (keyar[item]>key)
-				left[item]=*numbf;
-			else 
-				right[item]=*numbf;
+			if (keyar[item]>key)left[item]=*numbf;
+			else right[item]=*numbf;
 		}
 		return uk;
 	}
-
-/*QUICK SORT*/
-void quick_sort(long *low_ptr,long *high_ptr,long double *veight)
+	_int8 compare_solution(long key,long *numbf,long *keyar,long *left,long *right )
+	{
+		long node,item;
+		_int8 uk=1;
+		if (*numbf==0)return uk;
+		else
+		{
+			node=1;
+			while(node && uk)
+			{
+				if (keyar[node]==key)
+				{
+					uk=0;
+				}
+				else
+				{
+					item=node;
+					if (keyar[node]>key)node=left[node];
+					else node=right[node];
+				}
+			}
+			return uk;	
+		}
+	}
+	void quick_sort(long *low_ptr,long *high_ptr,long double *veight)
 	{
 		long *pivot_ptr;
 		long *partition(long *low_ptr, long *high_ptr,long double *veight);
@@ -1171,9 +1216,7 @@ void quick_sort(long *low_ptr,long *high_ptr,long double *veight)
 		}
 		else sort_simple_ins(low_ptr,high_ptr,veight);
 	}
-
-/*HELPER FUNCTION FOR QUICKSORT*/
-long *partition(long *low_ptr, long *high_ptr,long double *veight)
+	long *partition(long *low_ptr, long *high_ptr,long double *veight)
 	{
 		void swap(long *ptr_1,long *ptr_2);
 		long double pivot=*(veight+*(low_ptr+(high_ptr-low_ptr)/2) );
@@ -1191,7 +1234,7 @@ long *partition(long *low_ptr, long *high_ptr,long double *veight)
 		long temp=*ptr_1;
 		*ptr_1=*ptr_2;  *ptr_2=temp; 
 	}
-/*SIMPLE INSERTION SORT - NOT USED*/
+
 void sort_simple_insert(long low,long high,long *iv,long double *veight)
 	{
 		long double pivot;
@@ -1210,8 +1253,6 @@ void sort_simple_insert(long low,long high,long *iv,long double *veight)
 			iv[i+1]=temp;
 		}
 	}
-
-/*SIMPLE INSERTION SORT*/
 void sort_simple_ins(long *low_ptr,long *high_ptr,long double *veight)
 	{
 		long double pivot;
@@ -1231,106 +1272,7 @@ void sort_simple_ins(long *low_ptr,long *high_ptr,long double *veight)
 			*temp=ivp;
 		}
 	}
-
-#pragma region NotUsed
-/* NOT USED
-
-long double ferf(long double xv)
-{
-long double  y,z,p,x;
-x=fabs(xv);
-y=1.0/(1.0+0.3275911*x);
-z=( ( 1.0614054*y-1.453152 )*y+1.4214137 )*y;
-z=( ( ( z-0.28449673 )*y+0.2548295 )*y )/exp( x*x );
-y=1.0/( 1.0+0.2316419*x );
-p=exp( -x*x/2.0 )/2.50662827;
-z=( (1.3302744*y-1.821256 )*y+1.7814779 )*y;
-z=1.0-( ( ( z-0.35656378 )*y+0.31938153 )*y )*p;
-if ( xv>=0.0 ) return(1.0-z);
-else return(z);
-}
-
-void integry(long neqn,long nmyu,long *iv,long double *y,
-long double *amyu,long double *sf,long double *nf,
-long double *sf1,long double *nf1,
-long *f0max,long *f1max,long double *y0
-)
-{
-long i,j,jv,ii,jj;
-long double s,v,w,u;
-for (jv=0; jv<neqn; jv++)
-{
-j=iv[jv];
-s=0.0; ii=0;
-for (i=0; i<=nmyu; i++)
-{
-jj=ii+j;
-if (nf1[jj]>1.e-12 && nf[i]-nf1[jj]>1.e-12)
-{
-v=sf1[jj]/nf1[jj];
-if (v>f1max[j])v=f1max[j];
-w=(sf[i]-sf1[jj])/(nf[i]-nf1[jj]);
-if (w>f0max[j])w=f0max[j];
-}
-else
-{
-v=f1max[j];
-w=f0max[j];
-}
-
-u=w-v;
-
-jj=jj+neqn;
-if (nf1[jj]>1.e-12 && nf[i+1]-nf1[jj]>1.e-12)
-{
-v=sf1[jj]/nf1[jj];
-if (v>f1max[j])v=f1max[j];
-w=(sf[i+1]-sf1[jj])/(nf[i+1]-nf1[jj]);
-if (w>f0max[j])w=f0max[j];
-}
-else
-{
-v=f1max[j];
-w=f0max[j];
-}
-
-u=0.5*(u+w-v);
-s=s+(amyu[i+1]-amyu[i])*u;
-ii=ii+neqn;
-}
-y[j]=1.0/(1.0+(1.0-y0[j])*exp(s)/y0[j] );
-if (y[j]>epsu)y[j]=epsu;
-if (y[j]<epsl)y[j]=epsl;
-}
-}
-
-
-_int8 compare_solution(long key, long *numbf, long *keyar, long *left, long *right)
-{
-long node, item;
-_int8 uk = 1;
-if (*numbf == 0)return uk;
-else
-{
-node = 1;
-while (node && uk)
-{
-if (keyar[node] == key)
-{
-uk = 0;
-}
-else
-{
-item = node;
-if (keyar[node]>key)node = left[node];
-else node = right[node];
-}
-}
-return uk;
-}
-}
-
-void set_res(long fmax,long *afmax,long numit)
+	void set_res(long fmax,long *afmax,long numit)
 	{
 		long i,j,v,w,k,it;
 		w=100; k=-1; it=numit;//it=numit/n;
@@ -1350,8 +1292,7 @@ void set_res(long fmax,long *afmax,long numit)
 		}
 FIN:;
 	}
-
-void transp(long n,long *iv)
+	void transp(long n,long *iv)
     {
      long double urand(void);
      long i,k,l;
@@ -1371,8 +1312,7 @@ void transp(long n,long *iv)
 		k=k-1;
       }
     }
-
-void transp1(long n,long *iv)
+	void transp1(long n,long *iv)
     {
      long double urand(void);
      long i,k,l;
@@ -1389,19 +1329,17 @@ void transp1(long n,long *iv)
 		k=k-1;
       }
     }
-*/
-#pragma endregion NotUsed
-
 void CalcProb(int nmyu,long *iv,long double *y,
 				long double *amyu,long double *sf,long double *nf,
 				long double *sf1,long double *nf1,
 				long *f0max,long *f1max,long double *y0)
 {
-	long i,j,jv,ii,jj;
+	long i,j,jv,ii,jj,a,b;;
 	long double s,v,w,u;
 	long double epsl=1.e-7,epsu=0.9999999;
 	//long double epsl=1.e-3,epsu=0.999999;
-
+	a=4*(tabumax-tabumin);
+	b=-a;
 	for (jv=0; jv<nVar; jv++)
 	{
 		j=iv[jv];
@@ -1443,6 +1381,39 @@ void CalcProb(int nmyu,long *iv,long double *y,
 		y[j]=1.0/(1.0+(1.0-y0[j])*exp(s)/y0[j] );
 		if (y[j]>epsu)y[j]=epsu;
 		if (y[j]<epsl)y[j]=epsl;
+
+		/*if (y[j]<=0.6 && y[j]>=0.4)tabu_ar[j]=tabumin;
+		else
+		{
+			tabu_ar[j]=(long)(a*y[j]*y[j]+b*y[j]+tabumax);
+		}
+		if (y[j]<=0.5)
+		{
+			tabu_ar[j]=(long)(tabumin*(1-y[j])/y[j]);
+		}
+		else
+		{
+			tabu_ar[j]=(long)(tabumin*y[j]/(1-y[j]));
+		}*/
+		if (y[j]<=0.6 && y[j]>=0.4)tabu_ar[j]=tabumin;
+		else
+		{
+			if (y[j]<=0.5)
+			{
+				//s=(1-y[j])/y[j];
+				tabu_ar[j]=(long)(tabumin*(1-y[j])/y[j]);
+				//if (tabu_ar[j]>27*tabumin)tabu_ar[j]=27*tabumin;
+				tabuf_ar[j]=(long)(tabumin*y[j]/(1-y[j]));//tabumin;//
+				//if (tabuf_ar[j]<7)tabu_ar[j]=7;
+			}
+			else
+			{
+				tabu_ar[j]=(long)(tabumin*y[j]/(1-y[j]));
+				//if (tabu_ar[j]>27*tabumin)tabu_ar[j]=27*tabumin;
+				tabuf_ar[j]=(long)(tabumin*(1-y[j])/y[j]);//tabumin;//
+				//if (tabuf_ar[j]<7)tabu_ar[j]=7;
+			}
+		}
 		/*if (nmy>20)
 		{
 			if (y[j]>0.5 && f0max[j]>f1max[j])
@@ -1497,39 +1468,7 @@ void ReCalc_mod(long f,long *iv,long double *amyu,int npoint,
 	long i,jv,j,ii,jj;
 	long double s,v;
 
-	if (f>*fmax)
-	{
-		flg_foundrec=1;
-	}
-	if (f==*fmax)
-	{
-		*fmax=*fmax-coef+1;
-		//flg_max=1;
-		for (jv=0; jv<neqn; jv++)
-		{
-			j=iv[jv];
-			if (zz[j]==1)
-			{
-				f1max[j]=*fmax;
-			}
-			else
-			{
-				f0max[j]=*fmax;
-			}
-		}
-	}
-	for (jv=0; jv<neqn; jv++)
-	{
-		j=iv[jv];
-		if (yz[j])
-		{
-			if (f>f1max[j])f1max[j]=f;
-		}
-		else
-		{
-			if (f>f0max[j])f0max[j]=f;
-		}
-	}
+	if (f==*fmax)f=f-coef+1;
 	npoint=0;
 	for (jv=0; jv<neqn; jv++)
 	{
@@ -1564,6 +1503,8 @@ void ReCalc_mod(long f,long *iv,long double *amyu,int npoint,
 				ii=ii+neqn;
 			}
 		}
+		*fmax=f; 
+		*key_max=key;
 		if (f>total_fmax)
 		{
 			total_fmax=f; //n_sprob=0;
@@ -1574,50 +1515,35 @@ void ReCalc_mod(long f,long *iv,long double *amyu,int npoint,
 				//if (yz[j]==1)i=i+c[j];
 			}
 		}
-		*fmax=f; 
-		*key_max=key;
-		if (f>=record_f)
+		if (f>record_f)
 		{
+			//time(&end);
 			end=cpu_time();
-			
-			if (f>record_f)
+			strcpy_s(dirm,"d:\\data_MaxCut\\res\\MaxCutrecords_GES_tabu_ex_newsmod1pr1un_");
+			strcat(dirm,ngdir);
+			strcat(dirm,"_");
+			sprintf(dir,"%d",natak);
+			strcat(dirm,dir);
+			strcat(dirm,".txt");
+			fopen_s(&fi,dirm,"a+");
+			fprintf(fi,"%8.3f %ld  ",(end-start),f/coef);
+			record_f=f; s=v=0;
+			for (j=0; j<neqn; j++)
 			{
-				//time(&end);
-				end=cpu_time();
-				strcpy_s(dirm,"d:\\data_maxcut\\records\\");
-				strcat(dirm,ngdir);
-				strcat(dirm,"_");
-				sprintf(dir,"%d",natak);
-				strcat(dirm,dir);
-				strcat(dirm,".txt");
-				fopen_s(&fi,dirm,"a+");
-				fprintf(fi,"%8.3f %ld  ",(end-start),f/coef);
-				record_f=f; s=v=0;
-				for (j=0; j<neqn; j++)
-				{
-					s=s+fabs((double)( best_solution[j]-yz[j]));
-					v=v+fabs((double)(record_sol[j]-yz[j]));
-					record_sol[j]=yz[j];
-					//fprintf(fi,"%2ld",record_sol[j]);
-				}
-				//fprintf(fi,"\n");
-				//fprintf(fi,"time(sec)=%6ld distg=%g distp=%g f=%ld nmy=%ld n_thr=%ld %ld\n",
-				//	(end-start),s,v,f/coef,nmy,rr,key);
-				fprintf(fi,"time(sec)=%8.3f distg=%g distp=%g f=%ld nmy=%ld n_thr=%ld %ld %ld max_prob=%6.3Lf\n",
-					(end-start),s,v,f/coef,nmy,rr,key,n_att,max_prob);
-				printf("time(sec)=%8.3f distg=%g distp=%g f=%ld nmy=%ld n_thr=%ld %ld %ld max_prob=%6.3Lf\n",
-					(end-start),s,v,f/coef,nmy,rr,key,n_att,max_prob);
-				fclose(fi);
-				arec_t=end-start; n_attr=n_attempt;
-				//flg_foundrec=1;
+				s=s+fabs((double)( best_solution[j]-yz[j]));
+				v=v+fabs((double)(record_sol[j]-yz[j]));
+				record_sol[j]=yz[j];
+				//fprintf(fi,"%2ld",record_sol[j]);
 			}
-			else
-			{
-				for (j=0; j<neqn; j++)
-				{
-					record_sol[j]=yz[j];
-				}
-			}
+			//fprintf(fi,"\n");
+			//fprintf(fi,"time(sec)=%6ld distg=%g distp=%g f=%ld nmy=%ld n_thr=%ld %ld\n",
+			//	(end-start),s,v,f/coef,nmy,rr,key);
+			fprintf(fi,"%8.3f %ld %ld %ld %ld %ld %ld\n",
+				(end-start),f/coef,nmy,rr,key,n_att,kmax);
+			printf("time(sec)=%8.3f distg=%g distp=%g f=%ld nmy=%ld n_thr=%ld %ld %ld kmax=%ld\n",
+				(end-start),s,v,f/coef,nmy,rr,key,n_att,kmax);
+			fclose(fi);
+			arec_t=end-start; n_attr=n_attempt;
 		}
 		for (jv=0; jv<neqn; jv++)
 		{
@@ -1784,8 +1710,6 @@ void ReCalc_mod9(long f,long *iv,long double *amyu,
 		ii=ii+neqn;
 	}*/
 }
-
-/*NOT USED
 void ReCalc_sim(long f,long *iv,int npoint,long double *amyu,
 			long *fmax,long *yz,long *zz,long *f0max,long *f1max,
 			long double *sf,long double *nf,long double *sf1,long double *nf1,
@@ -1861,8 +1785,6 @@ void ReCalc_sim(long f,long *iv,int npoint,long double *amyu,
 		}
 	}
 }
-*/
-
 void ReCalc(long f,long *iv,int npoint,long double *amyu,
 	long *fmax,long *yz,long *zz,long *f0max,long *f1max,
 	long double *sf,long double *nf,long double *sf1,long double *nf1)
@@ -1983,8 +1905,6 @@ void ReCalc(long f,long *iv,int npoint,long double *amyu,
 		ii=ii+neqn;
 	}
 }
-
-/*NOT USED
 long MemSolution(long key,long *numbf,long *keyar,long *left,long *right )
 {
 	long node,item;
@@ -2030,8 +1950,6 @@ long MemSolution(long key,long *numbf,long *keyar,long *left,long *right )
 	}
 	return (0);
 }
-*/
-
 void InitSetting(long *iv,int npoint,
 					long *fmax,long *yz,long *zz,
 					long *f0max,long *f1max,
@@ -2064,8 +1982,6 @@ void InitSetting(long *iv,int npoint,
 		ii=ii+neqn;
 	}
 }
-
-/*NOT USED
 int EliteHandling_mode(long f,long *x,long *iv,
 					long *val_f_elite,long *key_elite,long *numf,
 					long *el_keyar,long *el_vfar,long *el_left,long *el_right,
@@ -2163,8 +2079,6 @@ int EliteHandling_mode(long f,long *x,long *iv,
 
 	return(0);
 }
-*/
-
 long mem_solution(long key,long f,long *numbf,long *keyar,long *vfar,
 						long *left,long *right )
 {
@@ -2198,15 +2112,11 @@ long mem_solution(long key,long f,long *numbf,long *keyar,long *vfar,
 		keyar[*numbf]=key;
 		vfar[*numbf]=f;
 		left[*numbf]=right[*numbf]=0;
-
-		if (keyar[item]>key)
-			left[item]=*numbf;
-		else 
-			right[item]=*numbf;
+		if (keyar[item]>key)left[item]=*numbf;
+		else right[item]=*numbf;
 	}
 	return uk;
 }
-/*CHECK IF SOLOTION "KEY" HAS BEEN FOUND*/
 long check_solution(long key,long f,long *numbf,long *keyar,long *vfar,
 					long *left,long *right )
 {
@@ -2231,8 +2141,6 @@ long check_solution(long key,long f,long *numbf,long *keyar,long *vfar,
 	}
 	return uk;
 }
-
-/*	NOT USED
 void Random_2Opt_mod(long *gg,long *moves,long *x,long *JA,long *JB,
 				 long *BN,long *diag_a,long *upmoves,long *key,long *chash,
 				 long numbf1,long *keyar1,long *vfar1,long *left1,long *right1,
@@ -2379,8 +2287,6 @@ LEND:;
 	*gg=f;
 	*key=keyf;
 }
-*/
-/* NOT USED
 void Random_1Opt_mod1(long *gg,long *moves,long *x,long *JA,long *JB,
 				 long *BN,long *diag_a,long *upmoves,long *key,long *chash,
 				 long numbf1,long *keyar1,long *vfar1,long *left1,long *right1,
@@ -2442,8 +2348,6 @@ void Random_1Opt_mod1(long *gg,long *moves,long *x,long *JA,long *JB,
 	*gg=f;
 	*key=keyf;
 }
-*/
-/*NOT USED
 void Random_1Opt_mod2(long *gg,long nmoves,long *moves,long *x,long *JA,long *JB,
 				 long *BN,long *diag_a,long *upmoves,long *key,long *chash,
 				 long ex_numbf,long *ex_keyar,long *ex_vfar,long *ex_left,long *ex_right,
@@ -2524,9 +2428,7 @@ void Random_1Opt_mod2(long *gg,long nmoves,long *moves,long *x,long *JA,long *JB
 	*gg=f;
 	*key=keyf;
 }
-*/
 //improvement
-/*CALCULATE GOAL FUNCTION FOR CURRENT X*/
 void CalcMaxCutGoalf(long *g,long *x,long *edge_wt,long *iv,
 						long *beg_list_edges_var,long *list_edges_var,long *list_nodes_var)
 {
@@ -2550,7 +2452,6 @@ void CalcMaxCutGoalf(long *g,long *x,long *edge_wt,long *iv,
 	}
 	*g=f;
 }
-
 void CalcMaxCutGains(long j,long *g,long *x,long *edge_wt,
 						long *beg_list_edges_var,long *list_edges_var,long *list_nodes_var)
 {
@@ -2626,8 +2527,6 @@ void ReCalcMaxCutGains(long j,long *gains,long *x,long *edge_wt,long *iv,
 	}
 
 }
-
-/*
 void MaxCutRandom_1_Opt(long *gg,long nmoves,long *moves,long *x,
 			long *key,long *chash,long *iv,long *gains,long *xbest,long *best_gains,
 			long *edge_wt,long *beg_list_edges_var,long *list_edges_var,long *list_nodes_var)
@@ -2676,8 +2575,6 @@ void MaxCutRandom_1_Opt(long *gg,long nmoves,long *moves,long *x,
 	*gg=f;
 	*key=keyf;
 }
-*/
-/*
 void MaxCutRandom_KOpt_mod2(long *gg,long nmoves,long *moves,long *x,
 			long *key,long *chash,
 			long *iv,long *gains,long *xbest,long *best_gains,
@@ -2693,19 +2590,19 @@ void MaxCutRandom_KOpt_mod2(long *gg,long nmoves,long *moves,long *x,
 	long i,j,f,k,kv,n_moves,keyf,jv,gmax,g,gain,step,last_best_move,keybest,
 		flg_stop=0,fbest,end_move,cg;
 
-	//CalcMaxCutGoalf(&i,x,sum_sat,edge_wt,iv,
-	//				beg_list_edges_var,
-	//				list_edges_var,
-	//				beg_list_minus_edge_var,
-	//				list_minus_edge_var,
-	//				beg_list_plus_var_edge,
-	//				list_plus_var_edge,
-	//				beg_list_minus_var_edge,
-	//				list_minus_var_edge);
-	//if (i!=(*gg))
-	//{
-	//	i=i;
-	//}
+	/*CalcMaxCutGoalf(&i,x,sum_sat,edge_wt,iv,
+					beg_list_edges_var,
+					list_edges_var,
+					beg_list_minus_edge_var,
+					list_minus_edge_var,
+					beg_list_plus_var_edge,
+					list_plus_var_edge,
+					beg_list_minus_var_edge,
+					list_minus_var_edge);
+	if (i!=(*gg))
+	{
+		i=i;
+	}*/
 	f=*gg;
 	keyf=*key;
 	step=last_best_move=0; 
@@ -2762,19 +2659,19 @@ AAA:;
 					ReCalcMaxCutGains(j,gains,x,edge_wt,iv,
 								beg_list_edges_var,list_edges_var,list_nodes_var);
 					x[j]=1-x[j];
-					//CalcMaxCutGoalf(&i,x,sum_sat,edge_wt,iv,
-					//		beg_list_edges_var,
-					//		list_edges_var,
-					//		beg_list_minus_edge_var,
-					//		list_minus_edge_var,
-					//		beg_list_plus_var_edge,
-					//		list_plus_var_edge,
-					//		beg_list_minus_var_edge,
-					//		list_minus_var_edge);
-					//if (i!=f)
-					//{
-					//	i=i;
-					//}
+					/*CalcMaxCutGoalf(&i,x,sum_sat,edge_wt,iv,
+							beg_list_edges_var,
+							list_edges_var,
+							beg_list_minus_edge_var,
+							list_minus_edge_var,
+							beg_list_plus_var_edge,
+							list_plus_var_edge,
+							beg_list_minus_var_edge,
+							list_minus_var_edge);
+					if (i!=f)
+					{
+						i=i;
+					}*/
 					if (x[j]==1)
 					{
 						keyf=keyf+chash[j];
@@ -2786,20 +2683,20 @@ AAA:;
 					step++;
 				}
 			}
-			//for (kv=end_move+tabu; kv<nmoves; kv++)
-			//{
-			//	move=moves[kv];
-			//	if (gains[move]<0)
-			//	{
-			//		cg=cg+gains[move];
-			//		f=f+gains[move];
-			//		i=f_ind[move]; j=s_ind[move];
-			//		k=x[i]; x[i]=x[j]; x[j]=k;
-			//		CalcQAPGains(gains,x,a,b);
-			//		if (f<=fz)goto LEND;
-			//		step++;
-			//	}
-			//}
+			/*for (kv=end_move+tabu; kv<nmoves; kv++)
+			{
+				move=moves[kv];
+				if (gains[move]<0)
+				{
+					cg=cg+gains[move];
+					f=f+gains[move];
+					i=f_ind[move]; j=s_ind[move];
+					k=x[i]; x[i]=x[j]; x[j]=k;
+					CalcQAPGains(gains,x,a,b);
+					if (f<=fz)goto LEND;
+					step++;
+				}
+			}*/
 			if (cg>0)
 			{
 				g=g+cg;
@@ -2840,40 +2737,40 @@ AAA:;
 		ReCalcMaxCutGains(j,gains,x,edge_wt,iv,
 								beg_list_edges_var,list_edges_var,list_nodes_var);
 		x[j]=1-x[j];
-		//CalcMaxCutGoalf(&i,x,sum_sat,edge_wt,iv,
-		//		beg_list_edges_var,
-		//		list_edges_var,
-		//		beg_list_minus_edge_var,
-		//		list_minus_edge_var,
-		//		beg_list_plus_var_edge,
-		//		list_plus_var_edge,
-		//		beg_list_minus_var_edge,
-		//		list_minus_var_edge);
-		//if (i!=f)
-		//{
-		//	i=i;
-		//}
+		/*CalcMaxCutGoalf(&i,x,sum_sat,edge_wt,iv,
+				beg_list_edges_var,
+				list_edges_var,
+				beg_list_minus_edge_var,
+				list_minus_edge_var,
+				beg_list_plus_var_edge,
+				list_plus_var_edge,
+				beg_list_minus_var_edge,
+				list_minus_var_edge);
+		if (i!=f)
+		{
+			i=i;
+		}*/
 		if (x[j]==1)
 		{
 			keyf=keyf+chash[j];
 		}
 		else keyf=keyf-chash[j];
 		gains[j]=-gains[j];
-		//for (jv=0; jv<neqn; jv++)
-		//{
-		//	k=iv[jv];
-		//	if (k==j)continue;
-		//	CalcMaxCutGains(k,&l,x,sum_sat,edge_wt,iv,
-		//		beg_list_edges_var,
-		//		list_edges_var,
-		//				beg_list_minus_edge_var,
-		//				list_minus_edge_var,
-		//				beg_list_plus_var_edge,
-		//				list_plus_var_edge,
-		//				beg_list_minus_var_edge,
-		//				list_minus_var_edge);
-		//	gains[k]=l;
-		//}
+		/*for (jv=0; jv<neqn; jv++)
+		{
+			k=iv[jv];
+			if (k==j)continue;
+			CalcMaxCutGains(k,&l,x,sum_sat,edge_wt,iv,
+				beg_list_edges_var,
+				list_edges_var,
+						beg_list_minus_edge_var,
+						list_minus_edge_var,
+						beg_list_plus_var_edge,
+						list_plus_var_edge,
+						beg_list_minus_var_edge,
+						list_minus_var_edge);
+			gains[k]=l;
+		}*/
 		moves[kv]=moves[end_move]; moves[end_move]=j;
 		end_move--;
 		step++;
@@ -2915,9 +2812,6 @@ LEND:;
 	*gg=f;
 	*key=keyf;
 }
-*/
-
-/*SOME VERSIONS OF TABU ALGORITHM*/
 void MaxCutRandom_Tabu(long *gg,long nmoves,long *moves,long *x,long *last_used,
 			long *key,long *chash,long *numbf,long *keyar,long *vfar,long *left,long *right,
 			long *iv,long *gains,long *xbest,long *best_gains,
@@ -3176,486 +3070,6 @@ LEND:;
 	*key_maxx=key_max;
 	*numbf=numf;
 }
-void MaxCutRandom_Tabu1(long *gg,long nmoves,long *moves,long *x,long *last_used,
-			long *key,long *chash,long *numbf,long *keyar,long *vfar,long *left,long *right,
-			long *iv,long *gains,long *xbest,long *best_gains,
-			long *edge_wt,long *beg_list_edges_var,long *list_edges_var,long *list_nodes_var,
-			long double *amyu,long *fmaxx,long *zz,long *f0max,long *f1max,
-			long double *sf,long double *nf,long double *sf1,long double *nf1,
-			long *key_maxx,long *gains_max)
-{
-	long double urand(void);
-
-	void CalcMaxCutGains(long j,long *g,long *x,long *edge_wt,
-						long *beg_list_edges_var,long *list_edges_var,long *list_nodes_var);
-	void ReCalcMaxCutGains(long j,long *gains,long *x,long *edge_wt,long *iv,
-						long *beg_list_edges_var,long *list_edges_var,long *list_nodes_var);
-	void ReCalc_mod(long f,long *iv,long double *amyu,int npoint,
-			long *fmax,long *yz,long *zz,long *f0max,long *f1max,
-			long double *sf,long double *nf,long double *sf1,long double *nf1,
-			long *key_max,long key,long *gains,long *gains_max);
-	void ReCalc_mod9(long f,long *iv,long double *amyu,
-					long *fmax,long *yz,long *zz,long *f0max,long *f1max,
-					long double *sf,long double *nf,long double *sf1,long double *nf1,
-					long *key_max,long key,long *gains,long *gains_max);
-	long mem_solution(long key,long f,long *numbf,long *keyar,long *vfar,
-						long *left,long *right );
-	_int8 flg_best;	
-	long i,j,f,k,mem,keyf,jv,gmax,g,gain,step,last_best_move,keybest,
-		flg_stop=0,fbest,cg,tabu,n_m,fmax,key_max,numf,lv,l,npoint;
-
-	npoint=n_point;
-
-	/*CalcMaxCutGoalf(&i,x,sum_sat,edge_wt,iv,
-					beg_list_edges_var,
-					list_edges_var,
-					beg_list_minus_edge_var,
-					list_minus_edge_var,
-					beg_list_plus_var_edge,
-					list_plus_var_edge,
-					beg_list_minus_var_edge,
-					list_minus_var_edge);
-	if (i!=(*gg))
-	{
-		i=i;
-	}*/
-	//max_n_iter=neqn/7;//super
-	//max_n_iter=neqn;
-
-	//max_n_iter=neqn/3;//100;//3*neqn;
-	t_tabu=tabu=21;//21;//9;//21;//21;
-	max_n_iter=neqn/10;//100;//
-	//if (nmy>=20 && *fmaxx==record_f && nfail==1)
-	{
-		//max_n_iter=neqn/7; t_tabu=20;
-	}
-	//max_n_iter=7*neqn;
-	//max_n_iter=9*neqn;
-	//max_n_iter=12*neqn;
-	//max_n_iter=27*neqn; 
-
-	f=*gg;
-	keyf=*key;
-	fmax=*fmaxx;
-	key_max=*key_maxx;
-	numf=*numbf;
-	step=last_best_move=0; 
-	for (jv=0; jv<nVar; jv++)
-	{
-		i=iv[jv];
-		best_gains[i]=gains[i];
-		xbest[i]=x[i];
-	}
-	keybest=keyf;
-	fbest=f;
-	nmoves=neqn; n_att=0;
-
-	
-	
-AAA:;
-	if (f>=(long)(0.99*total_fmax))
-	{
-		mem=mem_solution(keyf,f,&numf,keyar,vfar,left,right);
-		if (mem==0)
-		{
-			ReCalc_mod(f,iv,amyu,npoint,&fmax,x,zz,f0max,f1max,
-						sf,nf,sf1,nf1,&key_max,keyf,gains,gains_max);
-		}
-	}
-	last_best_move=step; 
-	last_used[0]=-9999999;
-	for (jv=nmoves-1; jv>0; jv--)
-	{
-		last_used[jv]=-9999999;
-		k=(long)(urand()*jv);
-		i=moves[k]; moves[k]=moves[jv]; moves[jv]=i;
-	}
-	g=gmax=0; 
-
-	while(1)
-	{
-		while(1)
-		{
-			for (jv=nmoves-1; jv>0; jv--)
-			{
-				k=(long)(urand()*jv);
-				i=moves[k]; moves[k]=moves[jv]; moves[jv]=i;
-			}
-			cg=0;
-			for (jv=0; jv<nmoves; jv++)
-			{
-				j=moves[jv];
-				if (step-last_used[j]<tabu)
-				{
-					if (f+gains[j]<=record_f)continue;
-				}
-				if (gains[j]>=0)
-				{
-					cg=cg+gains[j];
-					ReCalcMaxCutGains(j,gains,x,edge_wt,iv,
-										beg_list_edges_var,list_edges_var,list_nodes_var);
-
-					x[j]=1-x[j];
-					if (x[j]==1)
-					{
-						keyf=keyf+chash[j];
-					}
-					else keyf=keyf-chash[j];
-					if (keyf<0.0)
-					{
-						keyf=keyf;
-					}
-					gains[j]=-gains[j];
-					last_used[j]=step; step++;
-				}
-			}
-			if (cg>0)
-			{
-				f=f+cg;
-				g=g+cg;
-			}
-			else break;
-		}
-		/*CalcMaxCutGoalf(&i,x,edge_wt,iv,beg_list_edges_var,list_edges_var,list_nodes_var);
-		if (i!=f)
-		{
-			printf("ERROR in value f\n");
-		}*/
-		if (g>=gmax)
-		{
-			for (jv=0; jv<nVar; jv++)
-			{
-				i=iv[jv];
-				best_gains[i]=gains[i];
-				xbest[i]=x[i];
-			}
-			keybest=keyf;
-			fbest=f;
-			
-			if (f>=fzl)goto LEND;
-			if (g>gmax)
-			{
-				goto AAA;
-			}
-			gmax=g;
-		}
-
-		gain=-999999999; flg_best=0; n_m=0;
-		for (jv=0; jv<nmoves; jv++)
-		{
-			i=moves[jv];
-			if (step-last_used[i]<tabu)
-			{
-				if (f+gains[i]<=total_fmax)continue;
-				flg_best=1;
-			}
-			if (gain<gains[i])
-			{
-				gain=gains[i]; j=i; 
-			}
-		}
-		//if (gain<=0)
-		gain=gain;
-		{
-			g=g+gain;
-			f=f+gain;
-			ReCalcMaxCutGains(j,gains,x,edge_wt,iv,
-								beg_list_edges_var,list_edges_var,list_nodes_var);
-			x[j]=1-x[j];
-			if (x[j]==1)
-			{
-				keyf=keyf+chash[j];
-			}
-			else keyf=keyf-chash[j];
-			if (keyf<0.0)
-			{
-				keyf=keyf;
-			}
-			gains[j]=-gains[j];
-
-			last_used[j]=step; step++;
-			if (step-last_best_move>max_n_iter)break;
-			continue;
-		}
-		
-		if (step-last_best_move>max_n_iter)//neqn*30)//729//777//1000
-		{
-			break;
-		}
-	}
-	for (jv=0; jv<nVar; jv++)
-	{
-		i=iv[jv];
-		x[i]=xbest[i];
-		gains[i]=best_gains[i];
-	}
-	keyf=keybest;
-	f=fbest;
-	if (gmax>0)
-	{
-		n_att=0;
-		goto AAA;
-	}
-	else
-	{
-		n_att++;
-		if ((n_att<9 && f>=record_f) || n_att<3)goto AAA;//9
-	}
-
-LEND:;
-
-	*gg=f;
-	*key=keyf;
-	*fmaxx=fmax;
-	*key_maxx=key_max;
-	*numbf=numf;
-}
-void MaxCutRandom_Tabu11(long *gg,long nmoves,long *moves,long *x,long *last_used,long *key,long *chash,long *numbf,long *keyar,long *vfar,long *left,long *right,
-			long *iv,long *gains,long *xbest,long *best_gains,long *edge_wt,long *beg_list_edges_var,long *list_edges_var,long *list_nodes_var,
-			long double *amyu,long *fmaxx,long *zz,long *f0max,long *f1max,long double *sf,long double *nf,long double *sf1,long double *nf1,long *key_maxx,long *gains_max)
-{
-	long double urand(void);
-
-	void CalcMaxCutGains(long j,long *g,long *x,long *edge_wt,
-						long *beg_list_edges_var,long *list_edges_var,long *list_nodes_var);
-	void ReCalcMaxCutGains(long j,long *gains,long *x,long *edge_wt,long *iv,
-						long *beg_list_edges_var,long *list_edges_var,long *list_nodes_var);
-	void ReCalc_mod(long f,long *iv,long double *amyu,int npoint,
-			long *fmax,long *yz,long *zz,long *f0max,long *f1max,
-			long double *sf,long double *nf,long double *sf1,long double *nf1,
-			long *key_max,long key,long *gains,long *gains_max);
-	void ReCalc_mod9(long f,long *iv,long double *amyu,
-					long *fmax,long *yz,long *zz,long *f0max,long *f1max,
-					long double *sf,long double *nf,long double *sf1,long double *nf1,
-					long *key_max,long key,long *gains,long *gains_max);
-	long mem_solution(long key,long f,long *numbf,long *keyar,long *vfar,long *left,long *right );
-	long check_solution(long key,long f,long *numbf,long *keyar,long *vfar,long *left,long *right );
-
-	_int8 flg_best;	
-	long i,j,f,k,mem,keyf,jv,gmax,g,gain,step,last_best_move,keybest,mem0,ckey,
-		flg_stop=0,fbest,cg,tabu,n_m,fmax,key_max,numf,lv,l,npoint;
-
-	npoint=n_point;
-	//flg_execute=1;
-	/*CalcMaxCutGoalf(&i,x,sum_sat,edge_wt,iv,
-					beg_list_edges_var,
-					list_edges_var,
-					beg_list_minus_edge_var,
-					list_minus_edge_var,
-					beg_list_plus_var_edge,
-					list_plus_var_edge,
-					beg_list_minus_var_edge,
-					list_minus_var_edge);
-	if (i!=(*gg))
-	{
-		i=i;
-	}*/
-	//max_n_iter=neqn/7;//super
-	//max_n_iter=neqn;
-
-	//max_n_iter=neqn/3;//100;//3*neqn;
-	t_tabu=tabu=21;//9;//21;//21;
-	max_n_iter=neqn/10;//20;//10;//
-	//if (nmy>=20 && *fmaxx==record_f && nfail==1)
-	{
-		//max_n_iter=neqn/7; t_tabu=20;
-	}
-	//max_n_iter=7*neqn;
-	//max_n_iter=9*neqn;
-	//max_n_iter=12*neqn;
-	//max_n_iter=27*neqn; 
-
-	f=*gg;
-	keyf=*key;
-	fmax=*fmaxx;
-	key_max=*key_maxx;
-	numf=*numbf;
-	step=last_best_move=0; 
-	for (jv=0; jv<nVar; jv++)
-	{
-		i=iv[jv];
-		best_gains[i]=gains[i];
-		xbest[i]=x[i];
-	}
-	keybest=keyf;
-	fbest=f;
-	nmoves=neqn; n_att=0;
-
-	
-	
-AAA:;
-	//if (f>=(long)(0.99*total_fmax))
-	//{
-	//	mem=mem_solution(keyf,f,&numf,keyar,vfar,left,right);
-	//	mem0=mem_solution(sumhash-keyf,f,&numf,keyar,vfar,left,right);
-	//	if (mem==0 && mem0==0)
-	//	{
-	//		ReCalcNew(f,iv,amyu,npoint,&fmax,x,zz,f0max,f1max,
-	//					sf,nf,sf1,nf1,&key_max,keyf,gains,gains_max);
-	//		ReCalc_mod(f,iv,amyu,npoint,&fmax,x,zz,f0max,f1max,
-	//					sf,nf,sf1,nf1,&key_max,keyf,gains,gains_max);
-	//	}
-	//}
-	last_best_move=step; 
-	for (jv=0; jv<nmoves; jv++)
-	{
-		last_used[jv]=-9999999;
-	}
-	g=gmax=0; 
-
-	while(1)
-	{
-		while(1)
-		{
-			for (jv=nmoves-1; jv>0; jv--)
-			{
-				k=(long)(urand()*jv);
-				i=moves[k]; moves[k]=moves[jv]; moves[jv]=i;
-			}
-			cg=0;
-			for (jv=0; jv<nmoves; jv++)
-			{
-				j=moves[jv];
-				if (step-last_used[j]<tabu)
-				{
-					if (f+gains[j]<=record_f)continue;
-				}
-				if (gains[j]>=0)
-				{
-					//ckey=keyf;
-					//if (x[j]==0)
-					//{
-					//	ckey=ckey+chash[j];
-					//}
-					//else ckey=ckey-chash[j];
-					//mem=check_solution(ckey,f+cg+gains[j],&numf,keyar,vfar,left,right);
-					//mem0=check_solution(sumhash-ckey,f+cg+gains[j],&numf,keyar,vfar,left,right);
-					//if (mem>0 || mem0>0)
-					//{
-					//	mem=mem;
-					//	continue;
-					//}
-					//if (ckey<0.0)
-					//{
-					//	keyf=keyf;
-					//}
-					cg=cg+gains[j];
-					ReCalcMaxCutGains(j,gains,x,edge_wt,iv,
-										beg_list_edges_var,list_edges_var,list_nodes_var);
-
-					x[j]=1-x[j];
-					if (x[j]==1)
-					{
-						keyf=keyf+chash[j];
-					}
-					else keyf=keyf-chash[j];
-					if (keyf<0.0)
-					{
-						keyf=keyf;
-					}
-					gains[j]=-gains[j];
-					last_used[j]=step; step++;
-				}
-			}
-			if (cg>0)
-			{
-				f=f+cg;
-				g=g+cg;
-			}
-			else break;
-		}
-		/*CalcMaxCutGoalf(&i,x,edge_wt,iv,beg_list_edges_var,list_edges_var,list_nodes_var);
-		if (i!=f)
-		{
-			printf("ERROR in value f\n");
-		}*/
-		if (f>=fzu)goto LEND;
-		if (g>=gmax)
-		{
-			mem=check_solution(keyf,f,&numf,keyar,vfar,left,right);
-			//mem0=check_solution(sumhash-keyf,f,&numf,keyar,vfar,left,right);
-			if (mem==0)// && mem0==0)
-			{
-				for (jv=0; jv<nVar; jv++)
-				{
-					i=iv[jv];
-					best_gains[i]=gains[i];
-					xbest[i]=x[i];
-				}
-				keybest=keyf;
-				fbest=f;
-				if (g>gmax)
-				{
-					last_best_move=step; 
-					for (jv=0; jv<nmoves; jv++)
-					{
-						last_used[jv]=-9999999;
-					}
-					g=gmax=0; 
-				}
-			}
-		}
-BBB:;
-		gain=-999999999; flg_best=0; n_m=0;
-		for (jv=0; jv<nmoves; jv++)
-		{
-			i=moves[jv];
-			if (step-last_used[i]<tabu)
-			{
-				if (f+gains[i]<=total_fmax)continue;
-				flg_best=1;
-			}
-			if (gain<gains[i])
-			{
-				gain=gains[i]; j=i; 
-			}
-		}
-		g=g+gain;
-		f=f+gain;
-		ReCalcMaxCutGains(j,gains,x,edge_wt,iv,
-							beg_list_edges_var,list_edges_var,list_nodes_var);
-		x[j]=1-x[j];
-		if (x[j]==1)
-		{
-			keyf=keyf+chash[j];
-		}
-		else keyf=keyf-chash[j];
-		//if (keyf<0.0)
-		//{
-		//	keyf=keyf;
-		//}
-		gains[j]=-gains[j];
-
-		last_used[j]=step; step++;
-		if (step-last_best_move>max_n_iter)break;
-	}
-	for (jv=0; jv<nVar; jv++)
-	{
-		i=iv[jv];
-		x[i]=xbest[i];
-		gains[i]=best_gains[i];
-	}
-	keyf=keybest;
-	f=fbest;
-	if (gmax>0)
-	{
-		n_att=0;
-		goto AAA;
-	}
-	else
-	{
-		n_att++;
-		if ((n_att<9 && f>=record_f) || n_att<3)goto BBB;//9
-	}
-
-LEND:;
-
-	*gg=f;
-	*key=keyf;
-	*fmaxx=fmax;
-	*key_maxx=key_max;
-	*numbf=numf;
-}
 void MaxCutRandom_Tabu1Mod(long *gg,long nmoves,long *moves,long *x,long *last_used,
 			long *key,long *chash,long *numbf,long *keyar,long *vfar,long *left,long *right,
 			long *iv,long *gains,long *xbest,long *best_gains,
@@ -3703,6 +3117,257 @@ void MaxCutRandom_Tabu1Mod(long *gg,long nmoves,long *moves,long *x,long *last_u
 	//max_n_iter=neqn;
 
 	//max_n_iter=neqn/3;//100;//3*neqn;
+	t_tabu=tabu=tabumin;//9;//21;//21;
+	max_n_iter=neqn/10;//10;//
+	//if (nmy>=20 && *fmaxx==record_f && nfail==1)
+	{
+		//max_n_iter=neqn/7; t_tabu=20;
+	}
+	//max_n_iter=7*neqn;
+	//max_n_iter=9*neqn;
+	//max_n_iter=12*neqn;
+	//max_n_iter=27*neqn; 
+
+	f=*gg;
+	keyf=*key;
+	fmax=*fmaxx;
+	key_max=*key_maxx;
+	numf=*numbf;
+	step=last_best_move=0; 
+	for (jv=0; jv<nVar; jv++)
+	{
+		i=iv[jv];
+		best_gains[i]=gains[i];
+		xbest[i]=x[i];
+	}
+	keybest=keyf;
+	fbest=f;
+	nmoves=neqn; n_att=0;
+
+	
+	
+AAA:;
+	if (f>=(long)(0.99*total_fmax))
+	{
+		mem=mem_solution(keyf,f,&numf,keyar,vfar,left,right);
+		if (mem==0)
+		{
+			ReCalc_mod(f,iv,amyu,npoint,&fmax,x,zz,f0max,f1max,
+						sf,nf,sf1,nf1,&key_max,keyf,gains,gains_max);
+		}
+	}
+	last_best_move=step; 
+	last_used[0]=-999999999;
+	for (jv=nmoves-1; jv>0; jv--)
+	{
+		last_used[jv]=-999999999;
+		k=(long)(urand()*jv);
+		i=moves[k]; moves[k]=moves[jv]; moves[jv]=i;
+	}
+	g=gmax=0; 
+
+	while(1)
+	{
+		while(1)
+		{
+			for (jv=nmoves-1; jv>0; jv--)
+			{
+				k=(long)(urand()*jv);
+				i=moves[k]; moves[k]=moves[jv]; moves[jv]=i;
+			}
+			cg=0;
+			for (jv=0; jv<nmoves; jv++)
+			{
+				j=moves[jv];
+
+				if (x[j]==zz[j])tabu=tabu_ar[j];
+				else tabu=tabuf_ar[j];
+
+				if (step-last_used[j]<tabu)
+				{
+					if (f+gains[j]<=record_f)continue;
+				}
+				if (gains[j]>=0)
+				{
+					cg=cg+gains[j];
+					ReCalcMaxCutGains(j,gains,x,edge_wt,iv,
+										beg_list_edges_var,list_edges_var,list_nodes_var);
+
+					x[j]=1-x[j];
+					if (x[j]==1)
+					{
+						keyf=keyf+chash[j];
+					}
+					else keyf=keyf-chash[j];
+					if (keyf<0.0)
+					{
+						keyf=keyf;
+					}
+					gains[j]=-gains[j];
+					last_used[j]=step; step++;
+				}
+			}
+			if (cg>0)
+			{
+				f=f+cg;
+				g=g+cg;
+			}
+			else break;
+		}
+		/*CalcMaxCutGoalf(&i,x,edge_wt,iv,beg_list_edges_var,list_edges_var,list_nodes_var);
+		if (i!=f)
+		{
+			printf("ERROR in value f\n");
+		}*/
+		if (g>=gmax)
+		{
+			for (jv=0; jv<nVar; jv++)
+			{
+				i=iv[jv];
+				best_gains[i]=gains[i];
+				xbest[i]=x[i];
+			}
+			keybest=keyf;
+			fbest=f;
+			
+			if (f>=fzl)goto LEND;
+			if (g>gmax)
+			{
+				goto AAA;
+			}
+			gmax=g;
+		}
+
+		gain=-999999999; flg_best=0; n_m=0; j=-1;
+		for (jv=0; jv<nmoves; jv++)
+		{
+			i=moves[jv];
+
+			//if (x[i]==zz[i])tabu=tabu_ar[i];
+			//else tabu=tabumin;
+			if (x[j]==zz[j])tabu=tabu_ar[j];
+			else tabu=tabuf_ar[j];
+
+
+			if (step-last_used[i]<tabu)
+			{
+				if (f+gains[i]<=total_fmax)continue;
+				flg_best=1;
+			}
+			if (gain<gains[i])
+			{
+				gain=gains[i]; j=i; 
+			}
+		}
+		if (j<0)
+		{
+			j=j;
+			goto TE;
+		}
+		gain=gain;
+		{
+			g=g+gain;
+			f=f+gain;
+
+			ReCalcMaxCutGains(j,gains,x,edge_wt,iv,
+								beg_list_edges_var,list_edges_var,list_nodes_var);
+			x[j]=1-x[j];
+			if (x[j]==1)
+			{
+				keyf=keyf+chash[j];
+			}
+			else keyf=keyf-chash[j];
+			if (keyf<0.0)
+			{
+				keyf=keyf;
+			}
+			gains[j]=-gains[j];
+
+			last_used[j]=step; step++;
+			if (step-last_best_move>max_n_iter)break;
+			continue;
+		}
+		
+		if (step-last_best_move>max_n_iter)//neqn*30)//729//777//1000
+		{
+			break;
+		}
+	}
+TE:;
+	for (jv=0; jv<nVar; jv++)
+	{
+		i=iv[jv];
+		x[i]=xbest[i];
+		gains[i]=best_gains[i];
+	}
+	keyf=keybest;
+	f=fbest;
+	if (gmax>0)
+	{
+		n_att=0;
+		goto AAA;
+	}
+	else
+	{
+		n_att++;
+		if ((n_att<9 && f>=record_f) || n_att<3)goto AAA;//9
+	}
+
+LEND:;
+
+	*gg=f;
+	*key=keyf;
+	*fmaxx=fmax;
+	*key_maxx=key_max;
+	*numbf=numf;
+}
+void MaxCutRandom_Tabu1(long *gg,long nmoves,long *moves,long *x,long *last_used,
+			long *key,long *chash,long *numbf,long *keyar,long *vfar,long *left,long *right,
+			long *iv,long *gains,long *xbest,long *best_gains,
+			long *edge_wt,long *beg_list_edges_var,long *list_edges_var,long *list_nodes_var,
+			long double *amyu,long *fmaxx,long *zz,long *f0max,long *f1max,
+			long double *sf,long double *nf,long double *sf1,long double *nf1,
+			long *key_maxx,long *gains_max)
+{
+	long double urand(void);
+
+	void CalcMaxCutGains(long j,long *g,long *x,long *edge_wt,
+						long *beg_list_edges_var,long *list_edges_var,long *list_nodes_var);
+	void ReCalcMaxCutGains(long j,long *gains,long *x,long *edge_wt,long *iv,
+						long *beg_list_edges_var,long *list_edges_var,long *list_nodes_var);
+	void ReCalc_mod(long f,long *iv,long double *amyu,int npoint,
+			long *fmax,long *yz,long *zz,long *f0max,long *f1max,
+			long double *sf,long double *nf,long double *sf1,long double *nf1,
+			long *key_max,long key,long *gains,long *gains_max);
+	void ReCalc_mod9(long f,long *iv,long double *amyu,
+					long *fmax,long *yz,long *zz,long *f0max,long *f1max,
+					long double *sf,long double *nf,long double *sf1,long double *nf1,
+					long *key_max,long key,long *gains,long *gains_max);
+	long mem_solution(long key,long f,long *numbf,long *keyar,long *vfar,
+						long *left,long *right );
+	_int8 flg_best;	
+	long i,j,f,k,mem,keyf,jv,gmax,g,gain,step,last_best_move,keybest,
+		flg_stop=0,fbest,cg,tabu,n_m,fmax,key_max,numf,lv,l,npoint;
+
+	npoint=n_point;
+
+	/*CalcMaxCutGoalf(&i,x,sum_sat,edge_wt,iv,
+					beg_list_edges_var,
+					list_edges_var,
+					beg_list_minus_edge_var,
+					list_minus_edge_var,
+					beg_list_plus_var_edge,
+					list_plus_var_edge,
+					beg_list_minus_var_edge,
+					list_minus_var_edge);
+	if (i!=(*gg))
+	{
+		i=i;
+	}*/
+	//max_n_iter=neqn/7;//super
+	//max_n_iter=neqn;
+
+	//max_n_iter=neqn/3;//100;//3*neqn;
 	t_tabu=tabu=21;//9;//21;//21;
 	max_n_iter=neqn/10;//100;//
 	//if (nmy>=20 && *fmaxx==record_f && nfail==1)
@@ -3746,7 +3411,7 @@ AAA:;
 	last_used[0]=-9999999;
 	for (jv=nmoves-1; jv>0; jv--)
 	{
-		last_used[jv]=-9999999;
+		last_used[jv]=-999999999;
 		k=(long)(urand()*jv);
 		i=moves[k]; moves[k]=moves[jv]; moves[jv]=i;
 	}
@@ -3765,7 +3430,6 @@ AAA:;
 			for (jv=0; jv<nmoves; jv++)
 			{
 				j=moves[jv];
-				tabu=tabu_ar[j];
 				if (step-last_used[j]<tabu)
 				{
 					if (f+gains[j]<=record_f)continue;
@@ -3825,7 +3489,6 @@ AAA:;
 		for (jv=0; jv<nmoves; jv++)
 		{
 			i=moves[jv];
-			tabu=tabu_ar[i];
 			if (step-last_used[i]<tabu)
 			{
 				if (f+gains[i]<=total_fmax)continue;
@@ -3902,429 +3565,4 @@ double cpu_time( void )
     t = clock();
     if ( last == 0 ) last = t;
     return (double)(t-last)/CLOCKS_PER_SEC;
-}
-
-/*ANOTHER VERSION OF TABU*/
-void MaxCutRandom_Tabu13(long *gg,long nmoves,long *moves,long *x,long *last_used,long *key,long *chash,long *numbf,long *keyar,long *vfar,long *left,long *right,
-			long *iv,long *gains,long *xbest,long *best_gains,long *edge_wt,long *beg_list_edges_var,long *list_edges_var,long *list_nodes_var,
-			long double *amyu,long *fmaxx,long *zz,long *f0max,long *f1max,long double *sf,long double *nf,long double *sf1,long double *nf1,long *key_maxx,long *gains_max)
-{
-	long double urand(void);
-
-	void CalcMaxCutGains(long j,long *g,long *x,long *edge_wt,
-						long *beg_list_edges_var,long *list_edges_var,long *list_nodes_var);
-	void ReCalcMaxCutGains(long j,long *gains,long *x,long *edge_wt,long *iv,
-						long *beg_list_edges_var,long *list_edges_var,long *list_nodes_var);
-	void ReCalc_mod(long f,long *iv,long double *amyu,int npoint,
-			long *fmax,long *yz,long *zz,long *f0max,long *f1max,
-			long double *sf,long double *nf,long double *sf1,long double *nf1,
-			long *key_max,long key,long *gains,long *gains_max);
-	void ReCalc_mod9(long f,long *iv,long double *amyu,
-					long *fmax,long *yz,long *zz,long *f0max,long *f1max,
-					long double *sf,long double *nf,long double *sf1,long double *nf1,
-					long *key_max,long key,long *gains,long *gains_max);
-	long mem_solution(long key,long f,long *numbf,long *keyar,long *vfar,long *left,long *right );
-	long check_solution(long key,long f,long *numbf,long *keyar,long *vfar,long *left,long *right );
-
-	_int8 flg_best;	
-	long i,j,f,k,mem,keyf,jv,gmax,g,gain,step,last_best_move,keybest,mem0,ckey,oldf,fold,
-		flg_stop=0,fbest,cg,tabu,n_m,fmax,key_max,numf,lv,l,npoint;
-
-	npoint=n_point;
-	//flg_execute=1;
-	/*CalcMaxCutGoalf(&i,x,sum_sat,edge_wt,iv,
-					beg_list_edges_var,
-					list_edges_var,
-					beg_list_minus_edge_var,
-					list_minus_edge_var,
-					beg_list_plus_var_edge,
-					list_plus_var_edge,
-					beg_list_minus_var_edge,
-					list_minus_var_edge);
-	if (i!=(*gg))
-	{
-		i=i;
-	}*/
-	//max_n_iter=neqn/7;//super
-	//max_n_iter=neqn;
-	//max_n_iter=neqn/3;//100;//3*neqn;
-	t_tabu=tabu=21;//9;//21;//21;
-	max_n_iter=neqn/10;//20;//10;//
-
-	f=*gg;
-	keyf=*key;
-	fmax=*fmaxx;
-	key_max=*key_maxx;
-	numf=*numbf;
-	step=last_best_move=0; 
-	for (jv=0; jv<nVar; jv++)
-	{
-		i=iv[jv];
-		best_gains[i]=gains[i];
-		xbest[i]=x[i];
-	}
-	keybest=keyf;
-	fbest=f;
-	nmoves=neqn; n_att=0;
-	
-AAA:;
-	//if (f>=(long)(0.99*total_fmax))
-	//{
-	//	mem=mem_solution(keyf,f,&numf,keyar,vfar,left,right);
-	//	mem0=mem_solution(sumhash-keyf,f,&numf,keyar,vfar,left,right);
-	//	if (mem==0 && mem0==0)
-	//	{
-	//		ReCalcNew(f,iv,amyu,npoint,&fmax,x,zz,f0max,f1max,
-	//					sf,nf,sf1,nf1,&key_max,keyf,gains,gains_max);
-	//		ReCalc_mod(f,iv,amyu,npoint,&fmax,x,zz,f0max,f1max,
-	//					sf,nf,sf1,nf1,&key_max,keyf,gains,gains_max);
-	//	}
-	//}
-	last_best_move=step; 
-	for (jv=0; jv<nmoves; jv++)
-	{
-		last_used[jv]=-9999999;
-	}
-	g=gmax=0; 
-	fold=fbest;
-
-	while(1)
-	{
-		while(1)
-		{
-			for (jv=nmoves-1; jv>0; jv--)
-			{
-				k=(long)(urand()*jv);
-				i=moves[k]; moves[k]=moves[jv]; moves[jv]=i;
-			}
-			oldf=f;
-			for (jv=0; jv<nmoves; jv++)
-			{
-				j=moves[jv];
-				if (step-last_used[j]<tabu)
-				{
-					if (f+gains[j]<=record_f)continue;
-				}
-				if (gains[j]>=0)
-				{
-					//ckey=keyf;
-					//if (x[j]==0)
-					//{
-					//	ckey=ckey+chash[j];
-					//}
-					//else ckey=ckey-chash[j];
-					//mem=check_solution(ckey,f+cg+gains[j],&numf,keyar,vfar,left,right);
-					//mem0=check_solution(sumhash-ckey,f+cg+gains[j],&numf,keyar,vfar,left,right);
-					//if (mem>0 || mem0>0)
-					//{
-					//	mem=mem;
-					//	continue;
-					//}
-					//if (ckey<0.0)
-					//{
-					//	keyf=keyf;
-					//}
-					//cg=cg+gains[j];
-					f=f+gains[j];
-					ReCalcMaxCutGains(j,gains,x,edge_wt,iv,
-										beg_list_edges_var,list_edges_var,list_nodes_var);
-
-					x[j]=1-x[j];
-					if (x[j]==1)
-					{
-						keyf=keyf+chash[j];
-					}
-					else keyf=keyf-chash[j];
-					if (keyf<0.0)
-					{
-						keyf=keyf;
-					}
-					gains[j]=-gains[j];
-					last_used[j]=step; step++;
-				}
-			}
-			if (f<=oldf)break;
-		}
-		/*CalcMaxCutGoalf(&i,x,edge_wt,iv,beg_list_edges_var,list_edges_var,list_nodes_var);
-		if (i!=f)
-		{
-			printf("ERROR in value f\n");
-		}*/
-		if (f>=fzu)goto LEND;
-		if (f>=fbest)
-		{
-			mem=check_solution(keyf,f,&numf,keyar,vfar,left,right);
-			//mem0=check_solution(sumhash-keyf,f,&numf,keyar,vfar,left,right);
-			if (mem==0)// && mem0==0)
-			{
-				for (jv=0; jv<nVar; jv++)
-				{
-					i=iv[jv];
-					best_gains[i]=gains[i];
-					xbest[i]=x[i];
-				}
-				keybest=keyf;
-				if (f>fbest)
-				{
-					fbest=f;
-					last_best_move=step; 
-					for (jv=0; jv<nmoves; jv++)
-					{
-						last_used[jv]=-9999999;
-					}
-					//fold=fbest;
-				}
-			}
-		}
-BBB:;
-		gain=-999999999;  flg_best=1;
-		for (jv=0; jv<nmoves; jv++)
-		{
-			i=moves[jv];
-			if (step-last_used[i]<tabu)
-			{
-				if (f+gains[i]<=fbest)continue;
-				flg_best=1;
-			}
-			if (gain<gains[i])
-			{
-				gain=gains[i]; j=i; 
-			}
-		}
-		g=g+gain;
-		f=f+gain;
-		ReCalcMaxCutGains(j,gains,x,edge_wt,iv,beg_list_edges_var,list_edges_var,list_nodes_var);
-		x[j]=1-x[j];
-		if (x[j]==1)
-		{
-			keyf=keyf+chash[j];
-		}
-		else keyf=keyf-chash[j];
-		gains[j]=-gains[j];
-		last_used[j]=step; step++;
-
-		if (step-last_best_move>max_n_iter && f<=fbest)break;
-	}
-	for (jv=0; jv<nVar; jv++)
-	{
-		i=iv[jv];
-		x[i]=xbest[i];
-		gains[i]=best_gains[i];
-	}
-	keyf=keybest;
-	f=fbest;
-
-	if (fbest>fold)
-	{
-		fold=fbest;
-		n_att=0;
-		last_best_move=step; 
-		for (jv=0; jv<nmoves; jv++)
-		{
-			last_used[jv]=-9999999;
-		}
-		goto BBB;
-	}
-	else
-	{
-		n_att++;
-		if ((n_att<=9 && f>=record_f) || n_att<=3)
-		{
-			last_best_move=step; 
-			for (jv=0; jv<nmoves; jv++)
-			{
-				last_used[jv]=-9999999;
-			}
-			goto BBB;//9
-		}
-	}
-
-LEND:;
-
-	*gg=f;
-	*key=keyf;
-	*fmaxx=fmax;
-	*key_maxx=key_max;
-	*numbf=numf;
-}
-void CalcProb3(long nmyu,long *iv,long double *y,long double *amyu,long double *sf,long double *nf,
-				long double *sf1,long double *nf1,long *f0max,long *f1max,long double *y0)
-{
-	int i,j,jv,ii,jj,min_j,max_j;
-	double s,v,w,u,r,val_myu1,val_myu0;
-	double epsl,epsu;//0.999999;
-	//val_myu=amyu[nmyu];
-
-	epsl=1.e-12; epsu=1.0-epsl;
-	if (max_prob>1.0)
-	{
-		max_prob=epsu;
-	}
-	if (min_prob<0.0)max_prob=epsl;
-	if (min_prob<max_prob)
-	{
-		v=1.e18; w=-1.e18;
-		for (j=0; j<neqn; j++)
-		{
-			s=(f0max[j]-f1max[j]);
-			if (s>=0)
-			{
-				if (s<v)
-				{
-					v=s; min_j=j;
-				}
-			}
-			else
-			{
-				if (s>w)
-				{
-					w=s; max_j=j;
-				}
-			}
-		}
-		val_myu=val_myu1=log(1.0/max_prob-1.0)/w;
-		val_myu0=log(1.0/min_prob-1.0)/v;
-		if (val_myu>val_myu0)val_myu=val_myu0;
-	}
-	else val_myu=0.0;
-
-	for (j=0; j<neqn; j++)
-	{
-		s=(f0max[j]-f1max[j])*val_myu;
-		y[j]=1.0/(1.0+exp(s));
-	}
-	//w=w;
-}
-
-/*CLEAR TABU SEARCH*/
-void MaxCut_Tabu(long *gg,long nmoves,long *moves,long *x,long *last_used,
-			long *key,long *chash,long *numbf,long *keyar,long *vfar,long *left,long *right,
-			long *iv,long *gains,long *xbest,long *best_gains,
-			long *edge_wt,long *beg_list_edges_var,long *list_edges_var,long *list_nodes_var,
-			long double *amyu,long *fmaxx,long *zz,long *f0max,long *f1max,
-			long double *sf,long double *nf,long double *sf1,long double *nf1,
-			long *key_maxx,long *gains_max)
-{
-	long double urand(void);
-
-	void CalcMaxCutGains(long j,long *g,long *x,long *edge_wt,
-						long *beg_list_edges_var,long *list_edges_var,long *list_nodes_var);
-	void ReCalcMaxCutGains(long j,long *gains,long *x,long *edge_wt,long *iv,
-						long *beg_list_edges_var,long *list_edges_var,long *list_nodes_var);
-	void ReCalc_mod(long f,long *iv,long double *amyu,int npoint,
-			long *fmax,long *yz,long *zz,long *f0max,long *f1max,
-			long double *sf,long double *nf,long double *sf1,long double *nf1,
-			long *key_max,long key,long *gains,long *gains_max);
-	void ReCalc_mod9(long f,long *iv,long double *amyu,
-					long *fmax,long *yz,long *zz,long *f0max,long *f1max,
-					long double *sf,long double *nf,long double *sf1,long double *nf1,
-					long *key_max,long key,long *gains,long *gains_max);
-	long mem_solution(long key,long f,long *numbf,long *keyar,long *vfar,
-						long *left,long *right );
-	_int8 flg_best;	
-	long i,j,f,k,mem,keyf,jv,gmax,g,gain,step,last_best_move,keybest,
-		flg_stop=0,fbest,cg,tabu,n_m,fmax,key_max,numf,lv,l,npoint;
-
-	npoint=n_point;
-
-	//TABU TENURE = SIZE OF TABU LIST
-	t_tabu=tabu=21;//21;//9;//21;//21;
-
-	//NUMBER OF ITERATION SINCE LAST BEST MOVE AFTER WHICH ALGORITHM SHOULD STOP.
-	max_n_iter=neqn/10;//100;//
-
-	f=*gg;
-	keyf=*key;
-	fmax=*fmaxx;
-	key_max=*key_maxx;
-	numf=*numbf;
-	step=last_best_move=0; 
-	for (jv=0; jv<nVar; jv++)
-	{
-		i=iv[jv];
-		best_gains[i]=gains[i];
-		xbest[i]=x[i];
-	}
-	keybest=keyf;
-	fbest=f;
-	nmoves=neqn; n_att=0;
-
-	
-	
-AAA:;
-	last_best_move=step; 
-	last_used[0]=-9999999;
-	for (jv=nmoves-1; jv>0; jv--)
-	{
-		last_used[jv]=-9999999;
-		k=(long)(urand()*jv);
-		i=moves[k]; moves[k]=moves[jv]; moves[jv]=i;
-	}
-	g=gmax=0; 
-
-	while(1)
-	{
-		last_used[0]=-9999999;
-		for (jv=nmoves-1; jv>0; jv--)
-		{
-			last_used[jv]=-9999999;
-			k=(long)(urand()*jv);
-			i=moves[k]; moves[k]=moves[jv]; moves[jv]=i;
-		}
-		gain=-999999999; flg_best=0; n_m=0;
-		for (jv=0; jv<nmoves; jv++)
-		{
-			i=moves[jv];
-			if (step-last_used[i]<tabu)
-			{
-				if (f+gains[i]<=total_fmax)continue;
-				flg_best=1;
-			}
-			if (gain<gains[i])
-			{
-				gain=gains[i]; j=i; 
-			}
-		}
-		//if (gain<=0)
-		gain=gain;
-		{
-			g=g+gain;
-			f=f+gain;
-			ReCalcMaxCutGains(j,gains,x,edge_wt,iv,
-								beg_list_edges_var,list_edges_var,list_nodes_var);
-			x[j]=1-x[j];
-			if (x[j]==1)
-			{
-				keyf=keyf+chash[j];
-			}
-			else keyf=keyf-chash[j];
-			if (keyf<0.0)
-			{
-				keyf=keyf;
-			}
-			gains[j]=-gains[j];
-
-			last_used[j]=step; step++;
-			//if (step-last_best_move>max_n_iter)break;
-			continue;
-		}
-		
-		//if (step-last_best_move>max_n_iter)//neqn*30)//729//777//1000
-		//{
-		//	break;
-		//}
-	}
-
-LEND:;
-
-	*gg=f;
-	*key=keyf;
-	*fmaxx=fmax;
-	*key_maxx=key_max;
-	*numbf=numf;
-}
-
-/*REACTIVE TABU SEARCH*/
-void MaxCut_ReactiveTabu(){
-
 }

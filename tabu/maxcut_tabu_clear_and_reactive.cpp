@@ -6,6 +6,7 @@
 #include <time.h>
 #include <string.h>
 
+#pragma region GLOBAL_VARS
 FILE *file;
 char path[100];
 long best_known_f, n_edges, n_vertices;
@@ -14,10 +15,16 @@ long  *f_values, *left, *right, *occurence_time;				//arrays for storing search 
 long *last_used, *neighbourhood_values;				//the actual tabu list itself, list of f(x) for all neighbours
 long *x, *best_x;									//configuration
 long f, best_f, stored_f_count;						//f(x) ,f(best_x) , number of stored f in tree.
-long rand_seed, step,best_f_step, max_steps, tabu_size, tabu_change_t;
+long rand_seed, step, best_f_step, max_steps, tabu_size, tabu_change_t;
 bool *neighbourhood;								// determines whether neighbourhood[i] can be moved.
-double *hashes,*keys, x_key;
+double *hashes, *keys, x_key;
 long* best_f_min_array, best_f_max_array, best_f_min_array_reactive, best_f_max_array_reactive;
+
+#pragma endregion
+
+
+
+
 void main(){
 #pragma region Variables
 	long  number_f;
@@ -204,6 +211,7 @@ for(int i = 0; i < n_vertices; i++){
 
 	//calculate f(x) and save as best known.
 	f = best_f = F(x, edges);
+    //TODO: best_f will be written to file so spprove with common tabu testing
 	x_key = getKey(x);
 	step = 0;
 	best_f_step = 0;
@@ -409,6 +417,7 @@ for (int i = 0; i< iteration_test_count; i++){
 
 #pragma endregion
 
+#pragma region test_output_to_file
 fopen_s(&file, "d:\\data_maxcut\\results\\best_f_iterations\\tabu.txt", "a");
 for (int i = 0; i < iteration_test_count; i++){
 	fprintf_s(file, "%d \t %ld", i, iteration_bestf[i]);
@@ -420,12 +429,11 @@ for (int i = 0; i < iteration_test_count; i++){
 	fprintf_s(file, "%d \t %ld", i, iteration_bestf_reactive[i]);
 }
 fclose(file);
+#pragma endregion
 
 #pragma region NOT_ENOUGH_FREE_MEMORY
-	return;								// exit the program to prevent executing
-NOT_ENOUGH_FREE_MEMORY: 
-	
-	;
+NOT_ENOUGH_FREE_MEMORY: // exit the program to prevent executing
+  return;
 #pragma endregion		
 }
 
