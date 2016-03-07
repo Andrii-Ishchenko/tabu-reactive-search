@@ -73,10 +73,10 @@ void main(){
 
 #pragma region Fetch_Graph_Properties
 
-	strcpy_s(path, "d:\\data_maxcut\\G37_bks.txt");
-	fopen_s(&file, path, "r");
-	fscanf(file, "%ld\n", &best_known_f);
-	fclose(file);
+strcpy_s(path, "d:\\data_maxcut\\G37_bks.txt");
+fopen_s(&file, path, "r");
+fscanf(file, "%ld\n", &best_known_f);
+fclose(file);
 
 strcpy_s(path, "d:\\data_maxcut\\G37.txt");
 fopen_s(&file, path, "r");
@@ -87,7 +87,7 @@ fclose(file);
 
 #pragma region Memory_Allocation
 max_steps = 250;
-iteration_test_count = 15;
+iteration_test_count = 2;
 tabu_size = 21;
 
 x = (long *)calloc(graph.n_vertices, sizeof(long));
@@ -158,6 +158,7 @@ if (hashes == NULL) {
 	goto NOT_ENOUGH_FREE_MEMORY;
 }
 
+#pragma region graph
 graph.edges = (int **)calloc(graph.n_vertices, sizeof(int *));
 if (graph.edges == NULL) {
 	printf("It is not enough free memory for array edges\n");
@@ -202,6 +203,7 @@ if (graph.edge_weight == NULL) {
 	goto NOT_ENOUGH_FREE_MEMORY;
 }
 
+#pragma endregion
 
 iteration_bestf = (long *)calloc(iteration_test_count, sizeof(long));
 if (iteration_bestf == NULL){
@@ -234,7 +236,7 @@ for (int j = 0; j<graph.n_edges; j++)
 
 graph.beg_list_edges_var[0] = 0;
 
-for (int j = 0; j<graph.n_vertices; j++)
+for (int j = 0; j<graph.n_vertices-1; j++)
 {
 	graph.beg_list_edges_var[j + 1] = graph.beg_list_edges_var[j] + graph.n_con_edges[j];
 }
@@ -242,6 +244,7 @@ for (int j = 0; j<graph.n_vertices; j++)
 for (int j = 0; j<graph.n_vertices-1; j++)
 	graph.n_con_edges[j] = 0;
 
+if (file != NULL)
 fclose(file);
 
 /*Fetching nodes.*/
@@ -267,7 +270,10 @@ fclose(file);
 #pragma region testing_tabu
 printf("Starting test of %d tabu restarts.\nTabu size: %ld\nIteration till restart: %ld\n", iteration_test_count, tabu_size, max_steps);
 
-	fopen_s(&file, "d:\\data_maxcut\\results\\test_result.txt", "a");
+if (file != NULL)
+fclose(file);
+
+fopen_s(&file, "d:\\data_maxcut\\results\\test_result.txt", "a");
 fprintf_s(file, "Starting test of %d tabu restarts.\nTabu size: %d\nIterations till restart: %d\n", iteration_test_count, tabu_size, max_steps);
 fclose(file);
 
@@ -344,11 +350,11 @@ for(int i = 0; i < graph.n_vertices; i++){
 #pragma endregion
 
 #pragma region test_reallocate_memory
-		//free(keys);
-		//free(f_values);
-		//free(left);
-		//free(right);
-		//free(occurence_time);
+		free(history.keys);
+		free(history.f_values);
+		free(history.left);
+		free(history.right);
+		free(history.occurence_time);
 
 		history.keys = (double *)calloc(max_steps, sizeof(double));
 		if (history.keys == NULL){
