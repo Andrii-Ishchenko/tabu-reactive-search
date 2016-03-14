@@ -4,8 +4,7 @@
 #include <stdlib.h>
 #include <conio.h>
 #include <time.h>
-#include <string.h>
-
+#include <string>
 #pragma region TYPEDEFS
 
 struct graph_s {
@@ -26,17 +25,18 @@ struct history_s {
 	long * right;
 	long * occurence_time;
 	double * keys;
-	long stored_f_count;
-	long max_steps;
+	long stored_f_count=0;
+	long max_steps=0;
 } history;
 
 #pragma endregion
 
-const double eps = 0.0000001;
+const double eps = 0.00001;
 
 #pragma region GLOBAL_VARS
 FILE *file;
 char path[100];
+char datetimeprefix[80];
 long best_known_f;
 //long n_edges, n_vertices;
 //int **edges;										//adjacency matrix for the problem
@@ -49,6 +49,7 @@ bool *neighbourhood;								// determines whether neighbourhood[i] can be moved.
 double *hashes, x_key;
 long* best_f_min_array, best_f_max_array, best_f_min_array_reactive, best_f_max_array_reactive;
 long * reactive_tabu_size_statistics;
+long * graph_move_index_statistics;
 long previous_solution_found_count = 0;
 #pragma endregion
 
@@ -68,10 +69,14 @@ void main(){
 	double getKey(long *x);
 	void tabu(long *f, long *x, long n_vertices, int** edges, long *step, long max_steps, long *tabu_size, long *stored_f_count, bool *neighbourhood, long *neighbourhood_values, long *last_used, long *best_f, long *best_x, long *best_f_step);
 	void reactive_tabu(long *f, long *x, double *x_key, long *step, long max_steps, long *tabu_size,
-		bool *neighbourhood, long *neighbourhood_values, long *last_used, long *best_f, long *best_x, long *best_f_step, long* tabu_change_t, long* reactive_tabu_size_statistics, struct history_s history);
+		bool *neighbourhood, long *neighbourhood_values, long *last_used, long *best_f, long *best_x, long *best_f_step, long* tabu_change_t, long* reactive_tabu_size_statistics);
 	double getStandardRandom();
 	long F(long *x, int** matrix);
 	void reactive_tabu_size_log(long iteration_test_count, long max_steps);
+	void graph_move_index_log();
+
+	long save_solution(double key, long f, struct history_s *history, long step);
+	long check_solution(double key, long f, struct history_s *history);
 #pragma endregion
 
 #pragma region Fetch_Graph_Properties
@@ -88,11 +93,17 @@ fclose(file);
 
 #pragma endregion
 
-#pragma region Memory_Allocation
+strcpy_s(datetimeprefix,getDateTimePrefix());
+
+#pragma region CONSTANTS
+
 max_steps = 100000;
 iteration_test_count = 1;
 tabu_size = 21;
 
+#pragma endregion
+
+#pragma region Memory_Allocation
 x = (long *)calloc(graph.n_vertices, sizeof(long));
 if (x == NULL) {
 	printf("It is not enough free memory for x\n");
@@ -225,6 +236,12 @@ if (reactive_tabu_size_statistics == NULL) {
 	printf("It is not enough free memory for array reactive_tabu_size_statistics\n");
 	goto NOT_ENOUGH_FREE_MEMORY;
 }
+
+graph_move_index_statistics = (long *)calloc(graph.n_vertices, sizeof(long));
+if (graph_move_index_statistics == NULL) {
+	printf("It is not enough free memory for array reactive_tabu_size_statistics\n");
+	goto NOT_ENOUGH_FREE_MEMORY;
+}
 #pragma endregion 
 
 #pragma region Fetching_Data
@@ -274,8 +291,58 @@ for (int j = 0; j<graph.n_edges; j++)
 }
 fclose(file);
 #pragma endregion
-
-
+//
+//#pragma region pretests
+//for (int i = 0; i< graph.n_vertices; i++) {
+//	if (getStandardRandom() > 0.5) {
+//		x[i] = 1;
+//		best_x[i] = 1;
+//	}
+//	else {
+//		x[i] = 0;
+//		best_x[i] = 0;
+//	}
+//}
+//
+//for (int i = 0; i < graph.n_vertices; i++) {
+//	last_used[i] = -3 * graph.n_vertices;
+//}
+//
+//
+//for (int i = 0; i < graph.n_vertices; i++) {
+//	hashes[i] = getStandardRandom() * 100;
+//}
+//
+//f = best_f = F(x, graph.edges);
+//printf("F = %ld\t", f);
+//x_key = getKey(x);
+//
+//printf("KEY = %f\n", x_key);
+//
+//long node = check_solution(x_key,f,&history);
+//
+//printf("CS Node=%ld\n",node);
+//
+//node = save_solution(x_key, f, &history,0);
+//
+//printf("SS Node=%ld\n", node);
+//
+//node = check_solution(x_key, f, &history);
+//
+//printf("CS Node=%ld\n", node);
+//
+//node = save_solution(x_key, f, &history, 0);
+//
+//printf("SS Node=%ld\n", node);
+//
+//node = check_solution(x_key, f, &history);
+//
+//printf("CS Node=%ld\n", node);
+//
+//system("pause");
+//return;
+//#pragma endregion
+/*
 #pragma region testing_tabu
 
 printf("=====================TABU=====================\n\tRestarts: %d.\n\tTabu size: %d\n\tIterations till restart: %d\n", iteration_test_count, tabu_size, max_steps);
@@ -401,10 +468,10 @@ for(int i = 0; i < graph.n_vertices; i++){
 //free(iteration_bestf);
 
 #pragma endregion
-
+*/
 #pragma region testing_reactive_tabu
 
-printf("REACTIVE\n Restarts:%d.\nStart tabu size: %ld\nIteration till restart: %ld\n", iteration_test_count, tabu_size, max_steps);
+printf("====================REACTIVE====================\n Restarts:%d.\nStart tabu size: %ld\nIteration till restart: %ld\n", iteration_test_count, tabu_size, max_steps);
 
 fopen_s(&file, "d:\\data_maxcut\\results\\comparison\\log.txt", "a");
 fprintf_s(file, "====================REACTIVE====================\n\tRestarts:%d. \n\tStart tabu size: %ld \n\tIteration till restart: %ld\n", iteration_test_count, tabu_size, max_steps);
@@ -451,7 +518,7 @@ for (int i = 0; i< iteration_test_count; i++){
 
 	while (runCondition()){
 		//tabu(&f, x, n_vertices, edges, &step, max_steps, &tabu_size, &stored_f_count, neighbourhood, neighbourhood_values, last_used, &best_f, best_x, &best_f_step);
-		reactive_tabu(&f, x, &x_key, &step, max_steps, &tabu_size, neighbourhood, neighbourhood_values, last_used, &best_f, best_x, &best_f_step, &tabu_change_t, reactive_tabu_size_statistics,  history);
+		reactive_tabu(&f, x, &x_key, &step, max_steps, &tabu_size, neighbourhood, neighbourhood_values, last_used, &best_f, best_x, &best_f_step, &tabu_change_t, reactive_tabu_size_statistics);
 	}
 
 #pragma endregion
@@ -537,7 +604,7 @@ for (int i = 0; i < iteration_test_count; i++){
 fclose(file);
 
 reactive_tabu_size_log(iteration_test_count, max_steps);
-
+graph_move_index_log();
 #pragma endregion
 
 #pragma region NOT_ENOUGH_FREE_MEMORY
@@ -625,9 +692,9 @@ void tabu(long *f, long *x,long n_vertices,int** edges, long *step,long max_step
 }
 
 void reactive_tabu(long *f, long *x, double *x_key, long *step, long max_steps, long *tabu_size,
-	bool *neighbourhood, long *neighbourhood_values, long *last_used, long *best_f, long *best_x, long *best_f_step, long* tabu_change_t,long* reactive_tabu_size_statistics,struct history_s history)
+	bool *neighbourhood, long *neighbourhood_values, long *last_used, long *best_f, long *best_x, long *best_f_step, long* tabu_change_t,long* reactive_tabu_size_statistics)
 {
-	long best_neighbour_index = -1, best_neighbour_delta_value = LONG_MIN, node_index = 0, deltaVisitTime = 0;
+	long best_neighbour_index = -1, best_neighbour_delta_f = LONG_MIN, node_index = 0, deltaVisitTime = 0;
 	long best_neighbour_ac_index = -1;//aspiration criteria: if move can increase best solution but inside tabu : do it.
 	long best_neighbour_ac_delta_value = LONG_MIN;
 
@@ -639,8 +706,8 @@ void reactive_tabu(long *f, long *x, double *x_key, long *step, long max_steps, 
 
 	double getKey(long *x);
 	
-	long save_solution(double key, long f, struct history_s history, long step);
-	long check_solution(double key, long f, struct history_s history);
+	long save_solution(double key, long f, struct history_s *history, long step);
+	long check_solution(double key, long f, struct history_s *history);
 	void Increase(long* tabu_size, long n_vertices);
 	void Decrease(long* tabu_size, long n_vertices);
 	void copyX(long* source, long* destination, int length);
@@ -648,7 +715,7 @@ void reactive_tabu(long *f, long *x, double *x_key, long *step, long max_steps, 
 
 	
 #pragma region Reaction
-	if (node_index = check_solution(*x_key, *f, history)>0)
+	if (node_index = check_solution(*x_key, *f, &history)>0)
 	{
 		previous_solution_found_count++;
 		deltaVisitTime = *step - history.occurence_time[node_index];
@@ -662,9 +729,9 @@ void reactive_tabu(long *f, long *x, double *x_key, long *step, long max_steps, 
 	}
 	else 
 	{
-		save_solution(*x_key, *f, history, *step);
+		save_solution(*x_key, *f, &history, *step);
 
-		if (*step - *tabu_change_t > 1000)
+		if (*step - *tabu_change_t > 100)
 		{
 			*tabu_change_t = *step;
 			Decrease(tabu_size, graph.n_vertices);
@@ -681,10 +748,10 @@ void reactive_tabu(long *f, long *x, double *x_key, long *step, long max_steps, 
 		neighbourhood_values[i] = Fdelta(x, i, graph);
 
 		if (neighbourhood[i]) {
-			if (neighbourhood_values[i] >= best_neighbour_delta_value)
+			if (neighbourhood_values[i] >= best_neighbour_delta_f)
 			{
 				best_neighbour_index = i;
-				best_neighbour_delta_value = neighbourhood_values[i];
+				best_neighbour_delta_f = neighbourhood_values[i];
 			}
 		}
 		else { //check aspiration criteria
@@ -701,12 +768,15 @@ void reactive_tabu(long *f, long *x, double *x_key, long *step, long max_steps, 
 		*f = *f + best_neighbour_ac_delta_value;
 		x[best_neighbour_ac_index] = !x[best_neighbour_ac_index];
 		last_used[best_neighbour_ac_index] = *step;
+		graph_move_index_statistics[best_neighbour_ac_index]++;
 	}
 	else 
 	{
-		*f = *f + best_neighbour_delta_value;
+		*f = *f + best_neighbour_delta_f;
 		x[best_neighbour_index] = !x[best_neighbour_index];
 		last_used[best_neighbour_index] = *step;
+		graph_move_index_statistics[best_neighbour_index]++;
+		
 	}
 
 	/*if (*step % 50 == 0){
@@ -715,10 +785,10 @@ void reactive_tabu(long *f, long *x, double *x_key, long *step, long max_steps, 
 	
 	//copyX(x, best_x, n_vertices);
 
-	if (*f + best_neighbour_delta_value> *best_f)
+	if (*f + best_neighbour_delta_f> *best_f)
 	{
 		*best_f_step = *step;
-		*best_f = *f + best_neighbour_delta_value;
+		*best_f = *f + best_neighbour_delta_f;
 		strcpy_s(path, "d:\\data_maxcut\\results\\reactive_tabu\\best_x.txt");
 		fopen_s(&file, path, "w");
 
@@ -728,13 +798,17 @@ void reactive_tabu(long *f, long *x, double *x_key, long *step, long max_steps, 
 		fclose(file);
 	}
 
+	*x_key = getKey(x);
 
 }
 
+void ultra_reactive_tabu() {
+
+}
 #pragma region Helper_Functions
 
 bool runCondition(){
-	return (step <= max_steps) ;
+	return (step <	 max_steps) ;
 }
 
 void copyX(long* source, long* destination, int length){
@@ -743,11 +817,11 @@ void copyX(long* source, long* destination, int length){
 }
 
 void Increase(long* tabu_size, long n_vertices){
-	*tabu_size =  (long)fmin( fmax( 1.45*(*tabu_size) +1 , *tabu_size + 1 ), n_vertices - 2);
+	*tabu_size =  (long)fmin( fmax( 1.15*(*tabu_size) +1 , *tabu_size + 1 ), n_vertices - 2);
 }
 
 void Decrease(long* tabu_size, long n_vertices){
-	*tabu_size = (long)fmax( fmin( 0.99*(*tabu_size) , *tabu_size-1 ) , 1);
+	*tabu_size = (long)fmax( fmin( 0.75*(*tabu_size) , *tabu_size-1 ) , 1);
 }
 
 void initRandom(){
@@ -863,65 +937,65 @@ long Fdelta(long *x, long i, struct graph_s graph) {
 		return delta;
 }
 
-long save_solution(double key, long f, struct history_s h, long step)
+long save_solution(double key, long f, struct history_s *h, long step)
 {
 	long node, item;
-	if (h.stored_f_count == 0)
+	if (h->stored_f_count == 0)
 	{
-		h.stored_f_count++;
-		h.keys[h.stored_f_count] = key;
-		h.f_values[h.stored_f_count] = f;
-		h.left[h.stored_f_count] = 0;
-		h.right[h.stored_f_count] = 0;
-		h.occurence_time[h.stored_f_count] = 0;
+		h->stored_f_count++;
+		h->keys[h->stored_f_count] = key;
+		h->f_values[h->stored_f_count] = f;
+		h->left[h->stored_f_count] = 0;
+		h->right[h->stored_f_count] = 0;
+		h->occurence_time[h->stored_f_count] = 0;
 	}
 	else
 	{
 		node = 1;
 		while (node)
 		{
-			if (h.keys[node] == key && h.f_values[node] == f)
+			if (h->keys[node] == key && h->f_values[node] == f)
 			{
-				h.occurence_time[node]  = step;
+				h->occurence_time[node]  = step;
 				return node;
 			}
 			else
 			{
 				item = node;
-				if (h.keys[node]>key)node = h.left[node];
-				else node = h.right[node];
+				if (h->keys[node]>key)node = h->left[node];
+				else node = h->right[node];
 			}
 		}
-		h.stored_f_count++;
-		h.keys[h.stored_f_count] = key;
-		h.f_values[h.stored_f_count] = f;
-		h.left[h.stored_f_count] = h.right[h.stored_f_count] = h.occurence_time[h.stored_f_count] = 0;
+		h->stored_f_count++;
+		h->keys[h->stored_f_count] = key;
+		h->f_values[h->stored_f_count] = f;
+		h->left[h->stored_f_count] = h->right[h->stored_f_count] = h->occurence_time[h->stored_f_count] = 0;
 
-		if (h.keys[item]>key)
-			h.left[item] = h.stored_f_count;
+		if (h->keys[item]>key)
+			h->left[item] = h->stored_f_count;
 		else
-			h.right[item] = h.stored_f_count;
+			h->right[item] = h->stored_f_count;
 	}
 	return 0;
 }
 
-long check_solution(double key, long f, struct history_s h)
+long check_solution(double key, long f, struct history_s *h)
 {
 	long node, item;
-	if (h.stored_f_count>0)
+	if (h->stored_f_count>0)
 	{
 		node = 1;
 		while (node)
 		{
-			if (h.keys[node] == key && abs(h.f_values[node] - f)< eps)//&& h.f_values[node] == f
+			if ( fabs(h->keys[node] - key)< eps && fabs(h->f_values[node] - f)< eps)//&& h.f_values[node] == f
 			{
 				return node;
 			}
 			else
 			{
 				item = node;
-				if (h.keys[node]>key)node = h.left[node];
-				else node = h.right[node];
+				if (h->keys[node]>key)node = h->left[node];
+				else node = h->right[node];
 			}
 		}
 	}
@@ -934,11 +1008,11 @@ void reactive_tabu_size_log(long iteration_test_count, long max_steps) {
 		sum += reactive_tabu_size_statistics[i];
 	}
 
-	double mean = (double)sum / (iteration_test_count*max_steps);
+	double mean = ((double)sum) / (iteration_test_count*max_steps);
 
-	fopen_s(&file, "d:\\data_maxcut\\results\\reactive_tabu\\tabu_size_result.txt", "a");
+	fopen_s(&file, "d:\\data_maxcut\\results\\reactive_tabu\\tabu_size_result.txt", "w");
 	fprintf_s(file, "mean: %f\n", mean);
-	fprintf_s(file, "previous_sol_found_count :%f\n", previous_solution_found_count);
+	fprintf_s(file, "previous_sol_found_count :%ld\n", previous_solution_found_count);
 	fprintf_s(file, "data:\n");
 	for (int i = 0; i < graph.n_vertices; i++) {
 		fprintf_s(file, "%d, %ld;\n", i, reactive_tabu_size_statistics[i]);
@@ -946,3 +1020,22 @@ void reactive_tabu_size_log(long iteration_test_count, long max_steps) {
 	fclose(file);
 }
 #pragma endregion
+
+void graph_move_index_log() {
+	fopen_s(&file, "d:\\data_maxcut\\results\\reactive_tabu\\index_stats.txt", "a");
+	fprintf_s(file, "Total steps: %ld\n", step);
+	for (int i = 0; i < graph.n_vertices; i++) {
+		fprintf(file,"%ld,\t%ld\n", i, graph_move_index_statistics[i]);
+	}
+	fclose(file);
+}
+
+char* getDateTimePrefix() {
+	time_t now = time(0);
+	struct tm * timeinfo;
+
+	timeinfo = localtime(&now);
+	char* buffer = new char[80];
+	strftime(buffer, 80, "%Y%m%d-%H%M%S",timeinfo);
+	return buffer;
+}
