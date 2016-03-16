@@ -30,6 +30,10 @@ struct history_s {
 	long max_steps=0;
 } history;
 
+
+struct statistics {
+
+};
 #pragma endregion
 
 const double eps = 0.00001;
@@ -43,7 +47,7 @@ long best_known_f;
 
 long *last_used, *neighbourhood_values;				//the actual tabu list itself, list of f(x) for all neighbours
 long *x, *best_x;									//configuration
-long f, best_f;// , stored_f_count;						//f(x) ,f(best_x) , number of stored f in tree.
+long f, best_f;					                    //f(x) ,f(best_x) 
 long rand_seed;
 long step, best_f_step, max_steps, tabu_size, tabu_change_t;
 bool *neighbourhood;								// determines whether neighbourhood[i] can be moved.
@@ -53,10 +57,9 @@ long * reactive_tabu_size_statistics;
 long * graph_move_index_statistics;
 long previous_solution_found_count = 0;
 
+double * elapsed_time, *elapsed_time_reactive;
 clock_t start,current, finish;
 #pragma endregion
-
-
 
 
 void main(){
@@ -169,13 +172,14 @@ if (history.occurence_time == NULL) {
 	printf("It is not enough free memory for array occurence_count\n");
 	goto NOT_ENOUGH_FREE_MEMORY;
 }
-#pragma endregion
 
 history.hashes = (double *)calloc(graph.n_vertices, sizeof(double));
 if (history.hashes == NULL) {
-	printf("It is not enough free memory for array hashes\n");
-	goto NOT_ENOUGH_FREE_MEMORY;
+    printf("It is not enough free memory for array hashes\n");
+    goto NOT_ENOUGH_FREE_MEMORY;
 }
+
+#pragma endregion
 
 #pragma region graph
 graph.edges = (int **)calloc(graph.n_vertices, sizeof(int *));
@@ -258,6 +262,18 @@ graph_move_index_statistics = (long *)calloc(graph.n_vertices, sizeof(long));
 if (graph_move_index_statistics == NULL) {
 	printf("It is not enough free memory for array reactive_tabu_size_statistics\n");
 	goto NOT_ENOUGH_FREE_MEMORY;
+}
+
+elapsed_time = (double *)calloc(iterations_count, sizeof(long));
+if (elapsed_time == NULL) {
+    printf("It is not enough free memory for array elapsed_time\n");
+    goto NOT_ENOUGH_FREE_MEMORY;
+}
+
+elapsed_time_reactive = (double *)calloc(iterations_count, sizeof(long));
+if (elapsed_time_reactive == NULL) {
+    printf("It is not enough free memory for array elapsed_time\n");
+    goto NOT_ENOUGH_FREE_MEMORY;
 }
 #pragma endregion 
 
@@ -383,7 +399,6 @@ for (int i = 0; i< iterations_count; i++){
 
 #pragma region Initialization
 initRandom();
-//21; // i dont know how big it should be.
 
 for (int i = 0; i < graph.n_vertices; i++){
 	last_used[i] = -3* graph.n_vertices;
@@ -424,7 +439,7 @@ for(int i = 0; i < graph.n_vertices; i++){
 			tabu(&f, x, graph.n_vertices, graph.edges, &step, max_steps, &tabu_size, &history.stored_f_count, neighbourhood, neighbourhood_values, last_used, &best_f, best_x, &best_f_step);
 			//reactive_tabu(&f, x, &x_key, n_vertices, edges, &step, max_steps, &tabu_size, &stored_f_count, neighbourhood, neighbourhood_values, last_used, &best_f, best_x, &best_f_step, &tabu_change_t, keys, f_values, left, right,occurence_time );
 		}
-        
+        elapsed_time[i] = (clock() - start) / CLOCKS_PER_SEC;
         iteration_steps[i] = step;
 #pragma endregion
 
@@ -558,7 +573,7 @@ for (int i = 0; i< iterations_count; i++){
 		//tabu(&f, x, n_vertices, edges, &step, max_steps, &tabu_size, &stored_f_count, neighbourhood, neighbourhood_values, last_used, &best_f, best_x, &best_f_step);
 		reactive_tabu(&f, x, &x_key, &step, max_steps, &tabu_size, neighbourhood, neighbourhood_values, last_used, &best_f, best_x, &best_f_step, &tabu_change_t, reactive_tabu_size_statistics);
 	}
-
+    elapsed_time_reactive[i] = (clock() - start) / CLOCKS_PER_SEC;
     iteration_steps_reactive[i] = step;
 #pragma endregion
 
@@ -639,9 +654,9 @@ strcat_s(path, datetimeprefix);
 strcat(path, ".txt");
 fopen_s(&file, path, "w");
 
-fprintf_s(file, "ITERATION\tBEST F\t\tSTEPS\t\t\n");
+fprintf_s(file, "ITERATION\tBEST F\tSTEPS\tTIME\n");
 for (int i = 0; i < iterations_count; i++){
-    fprintf_s(file, "%d,\t\t%ld,\t\t%ld;\n", i, iteration_bestf[i],iteration_steps[i]);
+    fprintf_s(file, "%d,\t\t%ld,\t%ld\t%f;\n", i, iteration_bestf[i],iteration_steps[i],elapsed_time[i]);
 }
 
 fclose(file);
@@ -652,9 +667,9 @@ strcat_s(path, datetimeprefix);
 strcat(path, ".txt");
 fopen_s(&file, path, "w");
 
-fprintf_s(file, "ITERATION\tBEST F\t\tSTEPS\t\t\n");
+fprintf_s(file, "ITERATION\tBEST F\tSTEPS\tTIME\n");
 for (int i = 0; i < iterations_count; i++){
-    fprintf_s(file, "%d,\t\t%ld,\t\t%ld;\n", i, iteration_bestf_reactive[i],iteration_steps_reactive[i]);
+    fprintf_s(file, "%d,\t\t%ld,\t%ld\t%f;\n", i, iteration_bestf_reactive[i],iteration_steps_reactive[i],elapsed_time_reactive[i]);
 }
 
 fclose(file);
@@ -861,6 +876,7 @@ void reactive_tabu(long *f, long *x, double *x_key, long *step, long max_steps, 
 void ultra_reactive_tabu() {
 
 }
+
 #pragma region Helper_Functions
 
 bool runCondition(){
@@ -1082,7 +1098,6 @@ void reactive_tabu_size_log(long iteration_test_count, long steps) {
 	}
 	fclose(file);
 }
-#pragma endregion
 
 void graph_move_index_log() {
 
@@ -1107,3 +1122,5 @@ char* getDateTimePrefix() {
 	strftime(buffer, 80, "%Y%m%d-%H%M%S",timeinfo);
 	return buffer;
 }
+
+#pragma endregion
