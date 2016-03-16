@@ -32,6 +32,7 @@ struct history_s {
 #pragma endregion
 
 const double eps = 0.00001;
+const int test_time_seconds = 15;//30 * 60;
 
 #pragma region GLOBAL_VARS
 FILE *file;
@@ -51,6 +52,8 @@ long* best_f_min_array, best_f_max_array, best_f_min_array_reactive, best_f_max_
 long * reactive_tabu_size_statistics;
 long * graph_move_index_statistics;
 long previous_solution_found_count = 0;
+
+clock_t start,current, finish;
 #pragma endregion
 
 
@@ -77,6 +80,7 @@ void main(){
 
 	long save_solution(double key, long f, struct history_s *history, long step);
 	long check_solution(double key, long f, struct history_s *history);
+	char* getDateTimePrefix();
 #pragma endregion
 
 #pragma region Fetch_Graph_Properties
@@ -512,6 +516,9 @@ for (int i = 0; i< iteration_test_count; i++){
 	best_f_step = 0;
 	history.stored_f_count = 0;
 	tabu_change_t = 0;
+	start = clock();
+	finish = start + CLOCKS_PER_SEC * (test_time_seconds);
+
 #pragma endregion
 
 #pragma region Main_Loop
@@ -808,8 +815,11 @@ void ultra_reactive_tabu() {
 #pragma region Helper_Functions
 
 bool runCondition(){
-	return (step <	 max_steps) ;
+	//return (step <	 max_steps) ;
+	return (current = clock() < finish);
 }
+
+
 
 void copyX(long* source, long* destination, int length){
 	for (int i = 0; i < length; i++)
