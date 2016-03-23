@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <conio.h>
 #include <time.h>
+#include <windows.h>
 #include <string>
 #pragma region TYPEDEFS
 
@@ -110,7 +111,7 @@ strcpy_s(datetimeprefix,getDateTimePrefix());
 #pragma region CONSTANTS
 
 max_steps = 15000000;
-iterations_count = 20;
+iterations_count = 16;
 tabu_size = 21;
 
 #pragma endregion
@@ -598,11 +599,12 @@ for (int i = 0; i< iterations_count; i++){
 #pragma endregion
 
 #pragma region test_reallocate_memory
-	//free(keys);
-	//free(f_values);
-	//free(left);
-	//free(right);
-	//free(occurence_time);
+	free(history.keys);
+	free(history.f_values);
+	free(history.left);
+	free(history.right);
+	free(history.occurence_time);
+
 
 	history.keys = (double *)calloc(max_steps, sizeof(double));
 	if (history.keys == NULL){
@@ -1239,5 +1241,22 @@ char* getDateTimePrefix() {
 	strftime(buffer, 80, "%Y%m%d-%H%M%S",timeinfo);
 	return buffer;
 }
+
+#pragma region print functions
+
+void appendIterationResult(int index, long F, long steps, float elapsed_time, char* filename) {	
+	FILE *f;
+	char path[200];
+
+	strcpy_s(path, filename);
+
+	fopen_s(&file, path, "a");
+
+	fprintf_s(file, "%d,\t\t%ld,\t%ld\t%f;\n", index, F, steps, elapsed_time);
+
+	fclose(file);
+}
+
+#pragma endregion
 
 #pragma endregion
