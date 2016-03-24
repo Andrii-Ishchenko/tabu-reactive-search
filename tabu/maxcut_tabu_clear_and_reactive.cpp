@@ -38,7 +38,7 @@ struct statistics {
 #pragma endregion
 
 const double eps = 0.00001;
-const int test_time_seconds = 1800;
+const int test_time_seconds = 5;
 
 
 #pragma region GLOBAL_VARS
@@ -86,10 +86,13 @@ void main(){
 	long F(long *x, int** matrix);
 	void reactive_tabu_size_log(long iteration_test_count, long max_steps);
 	void graph_move_index_log();
-
+	void graph_move_index_log_reactive();
 	long save_solution(double key, long f, struct history_s *history, long step);
 	long check_solution(double key, long f, struct history_s *history);
 	char* getDateTimePrefix();
+	void addDateTimePrefixToFileName(char* dest, const char* first, const char* second, char* dtprefix);
+	void printResultToFile_tabu(int index);
+	void appendIterationResult(int index, long F, long steps, float elapsed_time, char* filename);
 #pragma endregion
 
 #pragma region Fetch_Graph_Properties
@@ -110,8 +113,8 @@ strcpy_s(datetimeprefix,getDateTimePrefix());
 
 #pragma region CONSTANTS
 
-max_steps = 15000000;
-iterations_count = 16;
+max_steps = 150000;
+iterations_count = 3;
 tabu_size = 21;
 
 #pragma endregion
@@ -329,7 +332,8 @@ for (int j = 0; j<graph.n_edges; j++)
 }
 fclose(file);
 #pragma endregion
-/*
+
+
 #pragma region testing_tabu
 
 printf("====================TABU====================\n");
@@ -358,7 +362,7 @@ fclose(file);
 for (int i = 0; i< iterations_count; i++){
 	printf("Restart %d : \t", i+1);
 
-#pragma region Initialization
+	#pragma region Initialization
 initRandom();
 
 for (int i = 0; i < graph.n_vertices; i++){
@@ -404,7 +408,7 @@ for(int i = 0; i < graph.n_vertices; i++){
 #pragma endregion
 
 #pragma region Results
-		printf("Best F:%ld \n",best_f);
+		printf("Best F:%ld\tIterations: %ld\tTime: %f\n",best_f,iteration_steps[i],elapsed_time[i]);
 		iteration_bestf[i] = best_f;
 
 		if (best_f > best_known_f){
@@ -421,15 +425,10 @@ for(int i = 0; i < graph.n_vertices; i++){
 		if (file != NULL)
 			fclose(file);
 
-		//strcpy_s(path, "d:\\data_maxcut\\results\\comparison\\log.txt");
-        strcpy_s(path, "d:\\data_maxcut\\results\\tabu\\log-");
-        strcat_s(path, datetimeprefix);
-        strcat(path, ".txt");
-
-		fopen_s(&file, path, "a");
-		
-		fprintf_s(file, "%d\t%ld\t%ld\t%f\n", i+1,best_f,iteration_steps[i],elapsed_time[i]);
-		fclose(file);
+		printResultToFile_tabu(i);
+		addDateTimePrefixToFileName(path, "d:\\data_maxcut\\results\\tabu\\log-", ".txt", datetimeprefix);
+		appendIterationResult(i + 1, best_f, iteration_steps[i], elapsed_time[i],path);
+		graph_move_index_log();
 #pragma endregion
 
 #pragma region test_reallocate_memory
@@ -475,7 +474,7 @@ for(int i = 0; i < graph.n_vertices; i++){
 //free(iteration_bestf);
 
 #pragma endregion
-*/
+
 
 #pragma region testing_reactive_tabu
 
@@ -596,6 +595,11 @@ for (int i = 0; i< iterations_count; i++){
 	//fprintf_s(file, "%d \t %ld\n", i + 1, best_f);
 
 	fclose(file);
+
+	graph_move_index_log();
+
+	for (int i = 0; i < graph.n_vertices; i++)
+		index_count[i] = 0;
 #pragma endregion
 
 #pragma region test_reallocate_memory
@@ -667,7 +671,7 @@ for (int i = 0; i < iterations_count; i++){
 fclose(file);
 
 reactive_tabu_size_log(iterations_count, step);
-graph_move_index_log();
+
 #pragma endregion
 
 #pragma region NOT_ENOUGH_FREE_MEMORY
@@ -721,12 +725,14 @@ void tabu(long *f, long *x,long n_vertices,int** edges, long *step,long max_step
 		*f = *f + best_neighbour_ac_delta_value;
 		x[best_neighbour_ac_index] = !x[best_neighbour_ac_index];
 		last_used[best_neighbour_ac_index] = *step;
+		index_count[best_neighbour_ac_index]++;
 	}
 	else 
 	{
 		*f = *f + best_neighbour_delta_value;
 		x[best_neighbour_index] = !x[best_neighbour_index];
 		last_used[best_neighbour_index] = *step;
+		index_count[best_neighbour_index]++;
 	}	
 
 	if (*step %100 == 0){
@@ -740,7 +746,7 @@ void tabu(long *f, long *x,long n_vertices,int** edges, long *step,long max_step
 		
 	if (*f + best_neighbour_delta_value > *best_f)
 	{
-		*best_f_step = *step;
+		/**best_f_step = *step;
 		*best_f = *f + best_neighbour_delta_value;
 		strcpy_s(path, "d:\\data_maxcut\\results\\tabu\\best_x.txt");
 		fopen_s(&file, path, "w");
@@ -749,7 +755,18 @@ void tabu(long *f, long *x,long n_vertices,int** edges, long *step,long max_step
 		for (int i = 0; i < n_vertices; i++)
 			fprintf_s(file, "%d", x[i]);
 		fclose(file);
+		*/
+		*best_f_step = *step;
+		*best_f = *f + best_neighbour_delta_value;
+
+		for (int ii = 0; ii < graph.n_vertices; ii++)
+			best_x[ii] = x[ii];
 	}
+
+	best_neighbour_index = -1;
+	best_neighbour_ac_index = -1;
+	best_neighbour_delta_value = LONG_MIN;
+	best_neighbour_ac_delta_value = LONG_MIN;
 }
 
 void reactive_tabu(long *f, long *x, double *x_key, long *step, long max_steps, long *tabu_size,
@@ -1219,6 +1236,22 @@ void reactive_tabu_size_log(long iteration_test_count, long steps) {
 
 void graph_move_index_log() {
 
+	FILE *f;
+
+	strcpy_s(path, "d:\\data_maxcut\\results\\tabu\\index_stats-");
+	strcat_s(path, datetimeprefix);
+	strcat(path, ".txt");
+	fopen_s(&f, path, "w");
+
+	fprintf_s(f, "Total steps: %ld\n", step);
+	for (int i = 0; i < graph.n_vertices; i++) {
+		fprintf(f, "%ld,\t%ld;\n", i, index_count[i]);
+	}
+	fclose(f);
+}
+
+void graph_move_index_log_reactive() {
+
     strcpy_s(path, "d:\\data_maxcut\\results\\reactive_tabu\\index_stats-");
     strcat_s(path, datetimeprefix);
     strcat(path, ".txt");
@@ -1252,9 +1285,36 @@ void appendIterationResult(int index, long F, long steps, float elapsed_time, ch
 
 	fopen_s(&file, path, "a");
 
-	fprintf_s(file, "%d,\t\t%ld,\t%ld\t%f;\n", index, F, steps, elapsed_time);
+	fprintf_s(file, "%d,\t%ld,\t%ld\t%f;\n", index, F, steps, elapsed_time);
 
 	fclose(file);
+}
+
+void addDateTimePrefixToFileName(char* dest,const char* first,const char* second, char* dtprefix) {
+	
+	strcpy(dest, first);
+	strcat(dest, dtprefix);
+	strcat(dest, second);
+}
+
+void printResultToFile_tabu(int ind) {
+	char intstring[4];
+	char path[200];
+	FILE *f;
+
+	strcpy(path, "d:\\data_maxcut\\results\\tabu\\best_x-");
+	strcat(path, datetimeprefix);
+	strcat(path, "-");
+	sprintf(intstring, "%d", ind);
+	strcat(path, intstring);
+	strcat(path, ".txt");
+	fopen_s(&f, path, "w");
+
+	fprintf_s(f, "=====F=====\n%ld\n=====X=====\n", best_f);
+	for (int i = 0; i < graph.n_vertices; i++)
+		fprintf_s(f, "%d", best_x[i]);
+	fclose(f);
+
 }
 
 #pragma endregion
