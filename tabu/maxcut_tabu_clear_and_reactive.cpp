@@ -6,6 +6,9 @@
 #include <time.h>
 #include <windows.h>
 #include <string>
+
+using namespace std;
+
 #pragma region TYPEDEFS
 
 struct graph_s {
@@ -31,14 +34,13 @@ struct history_s {
 	long max_steps=0;
 } history;
 
-
 struct statistics {
 
 };
 #pragma endregion
 
 const double eps = 0.00001;
-const int test_time_seconds = 5;
+const int test_time_seconds = 1800;
 
 
 #pragma region GLOBAL_VARS
@@ -58,6 +60,7 @@ double x_key;
 long * reactive_tabu_size_statistics;
 long * index_count;
 long * ultra_reactive_index_count;//array[i] is count of i vertices moved
+long * ultra_reactive_tabu_sizes;
 long previous_solution_found_count = 0;
 
 double * elapsed_time, *elapsed_time_reactive;
@@ -91,7 +94,7 @@ void main(){
 	long check_solution(double key, long f, struct history_s *history);
 	char* getDateTimePrefix();
 	void addDateTimePrefixToFileName(char* dest, const char* first, const char* second, char* dtprefix);
-	void printResultToFile_tabu(int index);
+	void printResultToFile(int index, const char* alg_name);
 	void appendIterationResult(int index, long F, long steps, float elapsed_time, char* filename);
 #pragma endregion
 
@@ -113,8 +116,8 @@ strcpy_s(datetimeprefix,getDateTimePrefix());
 
 #pragma region CONSTANTS
 
-max_steps = 150000;
-iterations_count = 3;
+max_steps = 15000000;
+iterations_count = 8;
 tabu_size = 21;
 
 #pragma endregion
@@ -272,6 +275,18 @@ if (index_count == NULL) {
 	goto NOT_ENOUGH_FREE_MEMORY;
 }
 
+ultra_reactive_index_count = (long*)calloc(graph.n_vertices, sizeof(long));
+if (ultra_reactive_index_count == NULL) {
+	printf("It is not enough free memory for array ultra_reactive_tabu_size_statistics\n");
+	goto NOT_ENOUGH_FREE_MEMORY;
+}
+
+ultra_reactive_tabu_sizes = (long * )calloc(graph.n_vertices, sizeof(long));
+if (ultra_reactive_tabu_sizes == NULL) {
+	printf("It is not enough free memory for array ultra_reactive_tabu_size_statistics\n");
+	goto NOT_ENOUGH_FREE_MEMORY;
+}
+
 elapsed_time = (double *)calloc(iterations_count, sizeof(long));
 if (elapsed_time == NULL) {
     printf("It is not enough free memory for array elapsed_time\n");
@@ -362,7 +377,7 @@ fclose(file);
 for (int i = 0; i< iterations_count; i++){
 	printf("Restart %d : \t", i+1);
 
-	#pragma region Initialization
+#pragma region Initialization
 initRandom();
 
 for (int i = 0; i < graph.n_vertices; i++){
@@ -425,7 +440,7 @@ for(int i = 0; i < graph.n_vertices; i++){
 		if (file != NULL)
 			fclose(file);
 
-		printResultToFile_tabu(i);
+		printResultToFile(i,"tabu");
 		addDateTimePrefixToFileName(path, "d:\\data_maxcut\\results\\tabu\\log-", ".txt", datetimeprefix);
 		appendIterationResult(i + 1, best_f, iteration_steps[i], elapsed_time[i],path);
 		graph_move_index_log();
@@ -584,15 +599,12 @@ for (int i = 0; i< iterations_count; i++){
 		fprintf_s(file2, "%d", best_x[i]);
 	fclose(file2);
 
-	//strcpy_s(path, "d:\\data_maxcut\\results\\comparison\\log.txt");
     strcpy_s(path, "d:\\data_maxcut\\results\\reactive_tabu\\log-");
     strcat_s(path, datetimeprefix);
     strcat(path, ".txt");
 	fopen_s(&file, path, "a");
 
-	//fprintf_s(file, "\n DateTime: ", ...);
 	fprintf_s(file, "%d\t%ld\t%ld\t%f\n", i + 1, best_f, iteration_steps_reactive[i], elapsed_time_reactive[i]);
-	//fprintf_s(file, "%d \t %ld\n", i + 1, best_f);
 
 	fclose(file);
 
@@ -905,33 +917,8 @@ void ultra_reactive_tabu(long *f, long *x, double *x_key, long *step, long max_s
 
     *x_key = getKey(x);
 
-#pragma region Reaction
-    if (node_index = check_solution(*x_key, *f, &history)>0)
-    {
-        previous_solution_found_count++;
-        deltaVisitTime = *step - history.occurence_time[node_index];
 
-        history.occurence_time[node_index] = *step;
-        if (deltaVisitTime < graph.n_vertices)
-        {
-            *tabu_change_t = *step;
-            Increase(tabu_size, graph.n_vertices);
-        }
-    }
-    else
-    {
-        save_solution(*x_key, *f, &history, *step);
-
-        if (*step - *tabu_change_t > 125)
-        {
-            *tabu_change_t = *step;
-            Decrease(tabu_size, graph.n_vertices);
-        }
-    }
-   
-#pragma endregion
-
-    getNeighbourhood(neighbourhood, last_used, *step, *tabu_size);
+    getNeighbourhoodUR(neighbourhood, last_used, *step, ultra_reactive_tabu_sizes);
 
     *step = *step + 1;
 
@@ -1066,18 +1053,21 @@ void getNeighbourhood(bool* neighbours, long* last_used ,long current_step, long
 //ULTRA REACTIVE
 void getNeighbourhoodUR(bool* neighbours, long* last_used, long current_step, long * tabu_sizes) {
     for (int i = 0; i < graph.n_vertices; i++) {
-        if (current_step - last_used[i] < tabu_size)
+        if (current_step - last_used[i] < tabu_sizes[i])
             neighbours[i] = false;
         else
             neighbours[i] = true;
     }
 }
 
+long recalculate_size(long index, long step, long* tabu_sizes, long* index_count) {
+	tabu_sizes[index] = UR_size(index_count[index],step);
+}
 long UR_size(long count,long total_count) {
 
     double p = (double)count / total_count;
     
-    double s = p / (1 - p);
+    return (long)(max(p / (1 - p),graph.n_vertices-2));
 }
 
 long F(long *x, int** matrix){
@@ -1102,7 +1092,6 @@ long F(long *x, long f, long index, int** matrix){
 	return f - minus + plus;
 
 }
-
 
 long Fdelta (long *x, long index, int** matrix) {
 	long minus = 0, plus = 0;
@@ -1290,19 +1279,20 @@ void appendIterationResult(int index, long F, long steps, float elapsed_time, ch
 	fclose(file);
 }
 
-void addDateTimePrefixToFileName(char* dest,const char* first,const char* second, char* dtprefix) {
-	
+void addDateTimePrefixToFileName(char* dest,const char* first,const char* second, char* dtprefix) {	
 	strcpy(dest, first);
 	strcat(dest, dtprefix);
 	strcat(dest, second);
 }
 
-void printResultToFile_tabu(int ind) {
+void printResultToFile(int ind, const char* alg_name) {
 	char intstring[4];
 	char path[200];
 	FILE *f;
 
-	strcpy(path, "d:\\data_maxcut\\results\\tabu\\best_x-");
+	strcpy(path, "d:\\data_maxcut\\results\\");
+	strcat(path, alg_name);
+	strcat(path,"\\best_x-");
 	strcat(path, datetimeprefix);
 	strcat(path, "-");
 	sprintf(intstring, "%d", ind);
