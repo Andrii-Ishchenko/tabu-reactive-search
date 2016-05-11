@@ -39,8 +39,8 @@ struct statistics {
 #pragma endregion
 
 const double eps = 0.00001;
-const int test_time_seconds = 10;
-const int UR_multiplier = 8500;
+const int test_time_seconds = 2;
+const int UR_multiplier = 150000;
 
 #pragma region GLOBAL_VARS
 FILE *file, *file2;
@@ -82,13 +82,13 @@ void main()
 	void initRandom();
 	bool runCondition();
 	double getKey(long *x);
-	void tabu(long *f, long *x, long n_vertices, int** edges, long *step, long max_steps, long *tabu_size,
+	void tabu(graph_s graph, long *f, long *x, long n_vertices, int** edges, long *step, long max_steps, long *tabu_size,
 		long *stored_f_count, bool *neighbourhood, long *neighbourhood_values, long *last_used, long *best_f, long *best_x, long *best_f_step);
-	void reactive_tabu(long *f, long *x, double *x_key, long *step, long max_steps, long *tabu_size,
+	void reactive_tabu(graph_s graph, long *f, long *x, double *x_key, long *step, long max_steps, long *tabu_size,
 		bool *neighbourhood, long *neighbourhood_values, long *last_used, long *best_f, long *best_x, long *best_f_step, long* tabu_change_t, long* reactive_tabu_size_statistics);
-	void ultra_reactive_tabu(long *f, long *x, double *x_key, long *step, long max_steps, long *tabu_size,
+	void ultra_reactive_tabu(graph_s graph, long *f, long *x, double *x_key, long *step, long max_steps, long *tabu_size,
 		bool *neighbourhood, long *neighbourhood_values, long *last_used, long *best_f, long *best_x, long *best_f_step, long* tabu_change_t, long* ultra_reactive_tabu_sizes, long* ultra_reactive_index_count);
-	void ultra_reactive_tabu_noac(long *f, long *x, double *x_key, long *step, long max_steps, long *tabu_size,
+	void ultra_reactive_tabu_noac(graph_s graph, long *f, long *x, double *x_key, long *step, long max_steps, long *tabu_size,
 		bool *neighbourhood, long *neighbourhood_values, long *last_used, long *best_f, long *best_x, long *best_f_step, long* tabu_change_t, long* ultra_reactive_tabu_sizes, long* ultra_reactive_index_count);
 	double getStandardRandom();
 	long F(long *x, int** matrix);
@@ -102,6 +102,9 @@ void main()
 	void addDateTimePrefixToFileName(char* dest, const char* first, const char* second, char* dtprefix);
 	void printResultToFile(int index, const char* alg_name);
 	void appendIterationResult(int index, long F, long steps, float elapsed_time, char* filename);
+	bool allocateMemory(long** x, long** best_x, long** last_used, bool** neighbourhood, long** neighbourhood_values, history_s* history, graph_s* graph,
+		long** iteration_bestf, long** iteration_bestf_reactive, long iterations_count, long** iteration_steps, long** iteration_steps_reactive, long** reactive_tabu_size_statistics,
+		long** index_count, long** ultra_reactive_tabu_sizes, double** elapsed_time, double** elapsed_time_reactive, double** elapsed_time_ultra_reactive);
 #pragma endregion
 
 #pragma region Fetch_Graph_Properties
@@ -123,188 +126,193 @@ void main()
 #pragma region CONSTANTS
 
 	max_steps = 15000000;
-	iterations_count = 1;
+	iterations_count = 16;
 	tabu_size = 75;
 
 #pragma endregion
 
 #pragma region Memory_Allocation
-	x = (long *)calloc(graph.n_vertices, sizeof(long));
-	if (x == NULL) {
-		printf("It is not enough free memory for x\n");
+	
+	if (!allocateMemory(&x, &best_x, &last_used,&neighbourhood, &neighbourhood_values, &history, &graph,&iteration_bestf,&iteration_bestf_reactive, 
+		iterations_count,&iteration_steps,&iteration_steps_reactive,&reactive_tabu_size_statistics,&index_count,&ultra_reactive_tabu_sizes,&elapsed_time, &elapsed_time_reactive, &elapsed_time_ultra_reactive))
 		goto NOT_ENOUGH_FREE_MEMORY;
-	}
 
-	best_x = (long *)calloc(graph.n_vertices, sizeof(long));
-	if (x == NULL) {
-		printf("It is not enough free memory for best_x\n");
-		goto NOT_ENOUGH_FREE_MEMORY;
-	}
-
-	last_used = (long *)calloc(graph.n_vertices, sizeof(long));
-	if (last_used == NULL) {
-		printf("It is not enough free memory for array last_used\n");
-		goto NOT_ENOUGH_FREE_MEMORY;
-	}
-
-	neighbourhood = (bool *)calloc(graph.n_vertices, sizeof(bool));
-	if (neighbourhood == NULL) {
-		printf("It is not enough free memory for array neighbourhood\n");
-		goto NOT_ENOUGH_FREE_MEMORY;
-	}
-
-	neighbourhood_values = (long *)calloc(graph.n_vertices, sizeof(long));
-	if (neighbourhood_values == NULL) {
-		printf("It is not enough free memory for array neighbourhood_values\n");
-		goto NOT_ENOUGH_FREE_MEMORY;
-	}
-
-#pragma region history
-	history.keys = (double *)calloc(max_steps, sizeof(double));
-	if (history.keys == NULL) {
-		printf("It is not enough free memory for array keyar\n");
-		goto NOT_ENOUGH_FREE_MEMORY;
-	}
-
-	history.f_values = (long *)calloc(max_steps, sizeof(long));
-	if (history.f_values == NULL) {
-		printf("It is not enough free memory for array f_values\n");
-		goto NOT_ENOUGH_FREE_MEMORY;
-	}
-
-	history.left = (long *)calloc(max_steps, sizeof(long));
-	if (history.left == NULL) {
-		printf("It is not enough free memory for array left\n");
-		goto NOT_ENOUGH_FREE_MEMORY;
-	}
-
-	history.right = (long *)calloc(max_steps, sizeof(long));
-	if (history.right == NULL) {
-		printf("It is not enough free memory for array right\n");
-		goto NOT_ENOUGH_FREE_MEMORY;
-	}
-
-	history.occurence_time = (long *)calloc(max_steps, sizeof(long));
-	if (history.occurence_time == NULL) {
-		printf("It is not enough free memory for array occurence_count\n");
-		goto NOT_ENOUGH_FREE_MEMORY;
-	}
-
-	history.hashes = (double *)calloc(graph.n_vertices, sizeof(double));
-	if (history.hashes == NULL) {
-		printf("It is not enough free memory for array hashes\n");
-		goto NOT_ENOUGH_FREE_MEMORY;
-	}
-
-#pragma endregion
-
-#pragma region graph
-	graph.edges = (int **)calloc(graph.n_vertices, sizeof(int *));
-	if (graph.edges == NULL) {
-		printf("It is not enough free memory for array edges\n");
-		goto NOT_ENOUGH_FREE_MEMORY;
-	}
-
-	for (int i = 0; i < graph.n_vertices; i++) {
-		graph.edges[i] = (int *)calloc(graph.n_edges, sizeof(int));
-		if (graph.edges[i] == NULL) {
-			printf("It is not enough free memory for array edges[i]\n");
-			goto NOT_ENOUGH_FREE_MEMORY;
-		}
-	}
-
-	graph.n_con_edges = (int *)calloc(graph.n_vertices, sizeof(int));
-	if (graph.n_con_edges == NULL) {
-		printf("It is not enough free memory for array n_con_edges\n");
-		goto NOT_ENOUGH_FREE_MEMORY;
-	}
-
-	graph.beg_list_edges_var = (int *)calloc(graph.n_vertices + 1, sizeof(int));
-	if (graph.beg_list_edges_var == NULL) {
-		printf("It is not enough free memory for array beg_list_edges_var\n");
-		goto NOT_ENOUGH_FREE_MEMORY;
-	}
-
-	graph.list_edges_var = (int *)calloc(2 * graph.n_edges, sizeof(int));
-	if (graph.list_edges_var == NULL) {
-		printf("It is not enough free memory for array list_edges_var\n");
-		goto NOT_ENOUGH_FREE_MEMORY;
-	}
-
-	graph.list_nodes_var = (int *)calloc(2 * graph.n_edges, sizeof(int));
-	if (graph.list_nodes_var == NULL) {
-		printf("It is not enough free memory for array list_nodes_var\n");
-		goto NOT_ENOUGH_FREE_MEMORY;
-	}
-
-	graph.edge_weight = (int *)calloc(graph.n_edges, sizeof(int));
-	if (graph.edge_weight == NULL) {
-		printf("It is not enough free memory for array edge_weight\n");
-		goto NOT_ENOUGH_FREE_MEMORY;
-	}
-
-#pragma endregion
-
-	iteration_bestf = (long *)calloc(iterations_count, sizeof(long));
-	if (iteration_bestf == NULL) {
-		printf("It is not enough free memory for array iteration_bestf\n");
-		goto NOT_ENOUGH_FREE_MEMORY;
-	}
-
-	iteration_bestf_reactive = (long *)calloc(iterations_count, sizeof(long));
-	if (iteration_bestf_reactive == NULL) {
-		printf("It is not enough free memory for array iteration_bestf_reactive\n");
-		goto NOT_ENOUGH_FREE_MEMORY;
-	}
-
-	iteration_steps = (long *)calloc(iterations_count, sizeof(long));
-	if (iteration_steps == NULL) {
-		printf("It is not enough free memory for array iteration_steps\n");
-		goto NOT_ENOUGH_FREE_MEMORY;
-	}
-
-	iteration_steps_reactive = (long *)calloc(iterations_count, sizeof(long));
-	if (iteration_steps_reactive == NULL) {
-		printf("It is not enough free memory for array iteration_steps\n");
-		goto NOT_ENOUGH_FREE_MEMORY;
-	}
-
-	reactive_tabu_size_statistics = (long *)calloc(graph.n_vertices, sizeof(long));
-	if (reactive_tabu_size_statistics == NULL) {
-		printf("It is not enough free memory for array reactive_tabu_size_statistics\n");
-		goto NOT_ENOUGH_FREE_MEMORY;
-	}
-
-	index_count = (long *)calloc(graph.n_vertices, sizeof(long));
-	if (index_count == NULL) {
-		printf("It is not enough free memory for array reactive_tabu_size_statistics\n");
-		goto NOT_ENOUGH_FREE_MEMORY;
-	}
-
-
-	ultra_reactive_tabu_sizes = (long *)calloc(graph.n_vertices, sizeof(long));
-	if (ultra_reactive_tabu_sizes == NULL) {
-		printf("It is not enough free memory for array ultra_reactive_tabu_size_statistics\n");
-		goto NOT_ENOUGH_FREE_MEMORY;
-	}
-
-	elapsed_time = (double *)calloc(iterations_count, sizeof(long));
-	if (elapsed_time == NULL) {
-		printf("It is not enough free memory for array elapsed_time\n");
-		goto NOT_ENOUGH_FREE_MEMORY;
-	}
-
-	elapsed_time_reactive = (double *)calloc(iterations_count, sizeof(long));
-	if (elapsed_time_reactive == NULL) {
-		printf("It is not enough free memory for array elapsed_time\n");
-		goto NOT_ENOUGH_FREE_MEMORY;
-	}
-
-	elapsed_time_ultra_reactive = (double *)calloc(iterations_count, sizeof(long));
-	if (elapsed_time_ultra_reactive == NULL) {
-		printf("It is not enough free memory for array elapsed_time\n");
-		goto NOT_ENOUGH_FREE_MEMORY;
-	}
+//	x = (long *)calloc(graph.n_vertices, sizeof(long));
+//	if (x == NULL) {
+//		printf("It is not enough free memory for x\n");
+//		goto NOT_ENOUGH_FREE_MEMORY;
+//	}
+//
+//	best_x = (long *)calloc(graph.n_vertices, sizeof(long));
+//	if (x == NULL) {
+//		printf("It is not enough free memory for best_x\n");
+//		goto NOT_ENOUGH_FREE_MEMORY;
+//	}
+//
+//	last_used = (long *)calloc(graph.n_vertices, sizeof(long));
+//	if (last_used == NULL) {
+//		printf("It is not enough free memory for array last_used\n");
+//		goto NOT_ENOUGH_FREE_MEMORY;
+//	}
+//
+//	neighbourhood = (bool *)calloc(graph.n_vertices, sizeof(bool));
+//	if (neighbourhood == NULL) {
+//		printf("It is not enough free memory for array neighbourhood\n");
+//		goto NOT_ENOUGH_FREE_MEMORY;
+//	}
+//
+//	neighbourhood_values = (long *)calloc(graph.n_vertices, sizeof(long));
+//	if (neighbourhood_values == NULL) {
+//		printf("It is not enough free memory for array neighbourhood_values\n");
+//		goto NOT_ENOUGH_FREE_MEMORY;
+//	}
+//
+//#pragma region history
+//	history.keys = (double *)calloc(max_steps, sizeof(double));
+//	if (history.keys == NULL) {
+//		printf("It is not enough free memory for array keyar\n");
+//		goto NOT_ENOUGH_FREE_MEMORY;
+//	}
+//
+//	history.f_values = (long *)calloc(max_steps, sizeof(long));
+//	if (history.f_values == NULL) {
+//		printf("It is not enough free memory for array f_values\n");
+//		goto NOT_ENOUGH_FREE_MEMORY;
+//	}
+//
+//	history.left = (long *)calloc(max_steps, sizeof(long));
+//	if (history.left == NULL) {
+//		printf("It is not enough free memory for array left\n");
+//		goto NOT_ENOUGH_FREE_MEMORY;
+//	}
+//
+//	history.right = (long *)calloc(max_steps, sizeof(long));
+//	if (history.right == NULL) {
+//		printf("It is not enough free memory for array right\n");
+//		goto NOT_ENOUGH_FREE_MEMORY;
+//	}
+//
+//	history.occurence_time = (long *)calloc(max_steps, sizeof(long));
+//	if (history.occurence_time == NULL) {
+//		printf("It is not enough free memory for array occurence_count\n");
+//		goto NOT_ENOUGH_FREE_MEMORY;
+//	}
+//
+//	history.hashes = (double *)calloc(graph.n_vertices, sizeof(double));
+//	if (history.hashes == NULL) {
+//		printf("It is not enough free memory for array hashes\n");
+//		goto NOT_ENOUGH_FREE_MEMORY;
+//	}
+//
+//#pragma endregion
+//
+//#pragma region graph
+//	graph.edges = (int **)calloc(graph.n_vertices, sizeof(int *));
+//	if (graph.edges == NULL) {
+//		printf("It is not enough free memory for array edges\n");
+//		goto NOT_ENOUGH_FREE_MEMORY;
+//	}
+//
+//	for (int i = 0; i < graph.n_vertices; i++) {
+//		graph.edges[i] = (int *)calloc(graph.n_edges, sizeof(int));
+//		if (graph.edges[i] == NULL) {
+//			printf("It is not enough free memory for array edges[i]\n");
+//			goto NOT_ENOUGH_FREE_MEMORY;
+//		}
+//	}
+//
+//	graph.n_con_edges = (int *)calloc(graph.n_vertices, sizeof(int));
+//	if (graph.n_con_edges == NULL) {
+//		printf("It is not enough free memory for array n_con_edges\n");
+//		goto NOT_ENOUGH_FREE_MEMORY;
+//	}
+//
+//	graph.beg_list_edges_var = (int *)calloc(graph.n_vertices + 1, sizeof(int));
+//	if (graph.beg_list_edges_var == NULL) {
+//		printf("It is not enough free memory for array beg_list_edges_var\n");
+//		goto NOT_ENOUGH_FREE_MEMORY;
+//	}
+//
+//	graph.list_edges_var = (int *)calloc(2 * graph.n_edges, sizeof(int));
+//	if (graph.list_edges_var == NULL) {
+//		printf("It is not enough free memory for array list_edges_var\n");
+//		goto NOT_ENOUGH_FREE_MEMORY;
+//	}
+//
+//	graph.list_nodes_var = (int *)calloc(2 * graph.n_edges, sizeof(int));
+//	if (graph.list_nodes_var == NULL) {
+//		printf("It is not enough free memory for array list_nodes_var\n");
+//		goto NOT_ENOUGH_FREE_MEMORY;
+//	}
+//
+//	graph.edge_weight = (int *)calloc(graph.n_edges, sizeof(int));
+//	if (graph.edge_weight == NULL) {
+//		printf("It is not enough free memory for array edge_weight\n");
+//		goto NOT_ENOUGH_FREE_MEMORY;
+//	}
+//
+//#pragma endregion
+//
+//	iteration_bestf = (long *)calloc(iterations_count, sizeof(long));
+//	if (iteration_bestf == NULL) {
+//		printf("It is not enough free memory for array iteration_bestf\n");
+//		goto NOT_ENOUGH_FREE_MEMORY;
+//	}
+//
+//	iteration_bestf_reactive = (long *)calloc(iterations_count, sizeof(long));
+//	if (iteration_bestf_reactive == NULL) {
+//		printf("It is not enough free memory for array iteration_bestf_reactive\n");
+//		goto NOT_ENOUGH_FREE_MEMORY;
+//	}
+//
+//	iteration_steps = (long *)calloc(iterations_count, sizeof(long));
+//	if (iteration_steps == NULL) {
+//		printf("It is not enough free memory for array iteration_steps\n");
+//		goto NOT_ENOUGH_FREE_MEMORY;
+//	}
+//
+//	iteration_steps_reactive = (long *)calloc(iterations_count, sizeof(long));
+//	if (iteration_steps_reactive == NULL) {
+//		printf("It is not enough free memory for array iteration_steps\n");
+//		goto NOT_ENOUGH_FREE_MEMORY;
+//	}
+//
+//	reactive_tabu_size_statistics = (long *)calloc(graph.n_vertices, sizeof(long));
+//	if (reactive_tabu_size_statistics == NULL) {
+//		printf("It is not enough free memory for array reactive_tabu_size_statistics\n");
+//		goto NOT_ENOUGH_FREE_MEMORY;
+//	}
+//
+//	index_count = (long *)calloc(graph.n_vertices, sizeof(long));
+//	if (index_count == NULL) {
+//		printf("It is not enough free memory for array reactive_tabu_size_statistics\n");
+//		goto NOT_ENOUGH_FREE_MEMORY;
+//	}
+//
+//
+//	ultra_reactive_tabu_sizes = (long *)calloc(graph.n_vertices, sizeof(long));
+//	if (ultra_reactive_tabu_sizes == NULL) {
+//		printf("It is not enough free memory for array ultra_reactive_tabu_size_statistics\n");
+//		goto NOT_ENOUGH_FREE_MEMORY;
+//	}
+//
+//	elapsed_time = (double *)calloc(iterations_count, sizeof(long));
+//	if (elapsed_time == NULL) {
+//		printf("It is not enough free memory for array elapsed_time\n");
+//		goto NOT_ENOUGH_FREE_MEMORY;
+//	}
+//
+//	elapsed_time_reactive = (double *)calloc(iterations_count, sizeof(long));
+//	if (elapsed_time_reactive == NULL) {
+//		printf("It is not enough free memory for array elapsed_time\n");
+//		goto NOT_ENOUGH_FREE_MEMORY;
+//	}
+//
+//	elapsed_time_ultra_reactive = (double *)calloc(iterations_count, sizeof(long));
+//	if (elapsed_time_ultra_reactive == NULL) {
+//		printf("It is not enough free memory for array elapsed_time\n");
+//		goto NOT_ENOUGH_FREE_MEMORY;
+//	}
 #pragma endregion 
 
 #pragma region Fetching_Data
@@ -422,7 +430,7 @@ void main()
 #pragma region Main_Loop
 
 		while (runCondition()) {
-			tabu(&f, x, graph.n_vertices, graph.edges, &step, max_steps, &tabu_size, &history.stored_f_count, neighbourhood, neighbourhood_values, last_used, &best_f, best_x, &best_f_step);
+			tabu(graph, &f, x, graph.n_vertices, graph.edges, &step, max_steps, &tabu_size, &history.stored_f_count, neighbourhood, neighbourhood_values, last_used, &best_f, best_x, &best_f_step);
 			//reactive_tabu(&f, x, &x_key, n_vertices, edges, &step, max_steps, &tabu_size, &stored_f_count, neighbourhood, neighbourhood_values, last_used, &best_f, best_x, &best_f_step, &tabu_change_t, keys, f_values, left, right,occurence_time );
 		}
 		elapsed_time[i] = (clock() - start) / CLOCKS_PER_SEC;
@@ -555,18 +563,18 @@ void main()
 		best_f_step = 0;
 		history.stored_f_count = 0;
 		tabu_change_t = 0;
-		start = clock();
-		finish = start + CLOCKS_PER_SEC * (test_time_seconds);
-
+		
 		for (int i = 0; i < graph.n_vertices; i++)
 			index_count[i] = 0;
 
+		start = clock();
+		finish = start + CLOCKS_PER_SEC * (test_time_seconds);
 #pragma endregion
 
 #pragma region Main_Loop
 
 		while (runCondition()) {
-			//tabu(&f, x, n_vertices, edges, &step, max_steps, &tabu_size, &stored_f_count, neighbourhood, neighbourhood_values, last_used, &best_f, best_x, &best_f_step);
+			//tabu(graph, &f, x, n_vertices, edges, &step, max_steps, &tabu_size, &stored_f_count, neighbourhood, neighbourhood_values, last_used, &best_f, best_x, &best_f_step);
 			reactive_tabu(&f, x, &x_key, &step, max_steps, &tabu_size, neighbourhood, neighbourhood_values, last_used, &best_f, best_x, &best_f_step, &tabu_change_t, reactive_tabu_size_statistics);
 		}
 
@@ -656,6 +664,7 @@ void main()
 printf("====================ULTRA_REACTIVE_TABU====================\n");
 printf("Start tabu size: %ld\n", tabu_size);
 printf("Restarts:%d\n", iterations_count);
+printf("UR_Constant = %ld\n", UR_multiplier);
 
 if (isTimeStopCondition)
 	printf("Time per iteration, s. : %ld\n", test_time_seconds);
@@ -665,6 +674,8 @@ else
 strcpy_s(path, "d:\\data_maxcut\\results\\ultra_reactive_tabu\\log-");
 strcat_s(path, datetimeprefix);
 strcat(path, ".txt");
+if (file != NULL)
+	fclose(file);
 fopen_s(&file, path, "a");
 
 //PRINT TO FILE
@@ -672,7 +683,7 @@ fopen_s(&file, path, "a");
 fprintf_s(file, "====================ULTRA_REACTIVE_TABU====================\n");
 fprintf_s(file, "Start tabu size: %ld\n", tabu_size);
 fprintf_s(file, "Restarts:%d\n", iterations_count);
-
+fprintf_s(file, "UR_Constant = %ld\n", UR_multiplier);
 if (isTimeStopCondition)
 	fprintf_s(file, "Time per iteration, s. : %ld\n", test_time_seconds);
 else
@@ -728,7 +739,7 @@ for (int i = 0; i < iterations_count; i++) {
 #pragma region Main_Loop
 
 	while (runCondition()) {
-		ultra_reactive_tabu_noac(&f, x, &x_key, &step, max_steps, &tabu_size, neighbourhood, neighbourhood_values, last_used, &best_f, best_x, &best_f_step, &tabu_change_t, ultra_reactive_tabu_sizes,index_count);
+		ultra_reactive_tabu_noac(graph,&f, x, &x_key, &step, max_steps, &tabu_size, neighbourhood, neighbourhood_values, last_used, &best_f, best_x, &best_f_step, &tabu_change_t, ultra_reactive_tabu_sizes,index_count);
 		
 	}
 	elapsed_time[i] = (clock() - start) / CLOCKS_PER_SEC;
@@ -805,7 +816,7 @@ NOT_ENOUGH_FREE_MEMORY :
 
 #pragma region ALGORITHMS
 
-void tabu(long *f, long *x, long n_vertices, int** edges, long *step, long max_steps, long *tabu_size, long *stored_f_count, bool *neighbourhood, long *neighbourhood_values, long *last_used, long *best_f, long *best_x, long *best_f_step){
+void tabu(graph_s graph,long *f, long *x, long n_vertices, int** edges, long *step, long max_steps, long *tabu_size, long *stored_f_count, bool *neighbourhood, long *neighbourhood_values, long *last_used, long *best_f, long *best_x, long *best_f_step){
 	long best_neighbour_index = -1, best_neighbour_delta_value = LONG_MIN;
 	long best_neighbour_ac_index = -1;//aspiration criteria: if move can increase best solution but inside tabu : do it.
 	long best_neighbour_ac_delta_value = LONG_MIN;
@@ -896,7 +907,7 @@ void tabu(long *f, long *x, long n_vertices, int** edges, long *step, long max_s
 	best_neighbour_ac_delta_value = LONG_MIN;
 }
 
-void reactive_tabu(long *f, long *x, double *x_key, long *step, long max_steps, long *tabu_size,
+void reactive_tabu(graph_s graph,  long *f, long *x, double *x_key, long *step, long max_steps, long *tabu_size,
 	bool *neighbourhood, long *neighbourhood_values, long *last_used, long *best_f, long *best_x, long *best_f_step, long* tabu_change_t, long* reactive_tabu_size_statistics)
 {
 	long best_neighbour_index = -1, best_neighbour_delta_f = LONG_MIN, node_index = 0, deltaVisitTime = 0;
@@ -1018,7 +1029,7 @@ void reactive_tabu(long *f, long *x, double *x_key, long *step, long max_steps, 
 
 }
 
-void ultra_reactive_tabu(long *f, long *x, double *x_key, long *step, long max_steps, long *tabu_size,
+void ultra_reactive_tabu(graph_s graph,  long *f, long *x, double *x_key, long *step, long max_steps, long *tabu_size,
 	bool *neighbourhood, long *neighbourhood_values, long *last_used, long *best_f, long *best_x, long *best_f_step, long* tabu_change_t, long* ultra_reactive_tabu_sizes, long* ultra_reactive_index_count)
 {
 	long best_neighbour_index = -1, best_neighbour_delta_f = LONG_MIN;
@@ -1127,7 +1138,7 @@ void ultra_reactive_tabu(long *f, long *x, double *x_key, long *step, long max_s
 }
 
 
-void ultra_reactive_tabu_noac(long *f, long *x, double *x_key, long *step, long max_steps, long *tabu_size,
+void ultra_reactive_tabu_noac(graph_s graph, long *f, long *x, double *x_key, long *step, long max_steps, long *tabu_size,
 	bool *neighbourhood, long *neighbourhood_values, long *last_used, long *best_f, long *best_x, long *best_f_step, long* tabu_change_t, long* ultra_reactive_tabu_sizes, long* ultra_reactive_index_count)
 {
 	long best_neighbour_index = -1, best_neighbour_delta_f = LONG_MIN;
@@ -1528,6 +1539,186 @@ void printResultToFile(int ind, const char* alg_name) {
 
 }
 
+bool allocateMemory(long** x,long** best_x, long** last_used,bool** neighbourhood,long** neighbourhood_values,history_s* history, graph_s* graph,
+	long** iteration_bestf,long** iteration_bestf_reactive,long iterations_count, long** iteration_steps, long** iteration_steps_reactive,long** reactive_tabu_size_statistics,
+	long** index_count,long** ultra_reactive_tabu_sizes, double** elapsed_time, double** elapsed_time_reactive, double** elapsed_time_ultra_reactive) {
+	*x = (long *)calloc(graph->n_vertices, sizeof(long));
+	if (x == NULL) {
+		printf("It is not enough free memory for x\n");
+		return false;
+	}
+
+	*best_x = (long *)calloc(graph->n_vertices, sizeof(long));
+	if (x == NULL) {
+		printf("It is not enough free memory for best_x\n");
+		return false;
+	}
+
+	*last_used = (long *)calloc(graph->n_vertices, sizeof(long));
+	if (last_used == NULL) {
+		printf("It is not enough free memory for array last_used\n");
+		return false;
+	}
+
+	*neighbourhood = (bool *)calloc(graph->n_vertices, sizeof(bool));
+	if (neighbourhood == NULL) {
+		printf("It is not enough free memory for array neighbourhood\n");
+		return false;
+	}
+
+	*neighbourhood_values = (long *)calloc(graph->n_vertices, sizeof(long));
+	if (neighbourhood_values == NULL) {
+		printf("It is not enough free memory for array neighbourhood_values\n");
+		return false;
+	}
+
+#pragma region history
+	history->keys = (double *)calloc(max_steps, sizeof(double));
+	if (history->keys == NULL) {
+		printf("It is not enough free memory for array keyar\n");
+		return false;
+	}
+
+	history->f_values = (long *)calloc(max_steps, sizeof(long));
+	if (history->f_values == NULL) {
+		printf("It is not enough free memory for array f_values\n");
+		return false;
+	}
+
+	history->left = (long *)calloc(max_steps, sizeof(long));
+	if (history->left == NULL) {
+		printf("It is not enough free memory for array left\n");
+		return false;
+	}
+
+	history->right = (long *)calloc(max_steps, sizeof(long));
+	if (history->right == NULL) {
+		printf("It is not enough free memory for array right\n");
+		return false;
+	}
+
+	history->occurence_time = (long *)calloc(max_steps, sizeof(long));
+	if (history->occurence_time == NULL) {
+		printf("It is not enough free memory for array occurence_count\n");
+		return false;
+	}
+
+	history->hashes = (double *)calloc(graph->n_vertices, sizeof(double));
+	if (history->hashes == NULL) {
+		printf("It is not enough free memory for array hashes\n");
+		return false;
+	}
+
+#pragma endregion
+
+#pragma region graph
+	graph->edges = (int **)calloc(graph->n_vertices, sizeof(int *));
+	if (graph->edges == NULL) {
+		printf("It is not enough free memory for array edges\n");
+		return false;
+	}
+
+	for (int i = 0; i < graph->n_vertices; i++) {
+		graph->edges[i] = (int *)calloc(graph->n_edges, sizeof(int));
+		if (graph->edges[i] == NULL) {
+			printf("It is not enough free memory for array edges[i]\n");
+			return false;
+		}
+	}
+
+	graph->n_con_edges = (int *)calloc(graph->n_vertices, sizeof(int));
+	if (graph->n_con_edges == NULL) {
+		printf("It is not enough free memory for array n_con_edges\n");
+		return false;
+	}
+
+	graph->beg_list_edges_var = (int *)calloc(graph->n_vertices + 1, sizeof(int));
+	if (graph->beg_list_edges_var == NULL) {
+		printf("It is not enough free memory for array beg_list_edges_var\n");
+		return false;
+	}
+
+	graph->list_edges_var = (int *)calloc(2 * graph->n_edges, sizeof(int));
+	if (graph->list_edges_var == NULL) {
+		printf("It is not enough free memory for array list_edges_var\n");
+		return false;
+	}
+
+	graph->list_nodes_var = (int *)calloc(2 * graph->n_edges, sizeof(int));
+	if (graph->list_nodes_var == NULL) {
+		printf("It is not enough free memory for array list_nodes_var\n");
+		return false;
+	}
+
+	graph->edge_weight = (int *)calloc(graph->n_edges, sizeof(int));
+	if (graph->edge_weight == NULL) {
+		printf("It is not enough free memory for array edge_weight\n");
+		return false;
+	}
+
+#pragma endregion
+
+	*iteration_bestf = (long *)calloc(iterations_count, sizeof(long));
+	if (iteration_bestf == NULL) {
+		printf("It is not enough free memory for array iteration_bestf\n");
+		return false;
+	}
+
+	*iteration_bestf_reactive = (long *)calloc(iterations_count, sizeof(long));
+	if (iteration_bestf_reactive == NULL) {
+		printf("It is not enough free memory for array iteration_bestf_reactive\n");
+		return false;
+	}
+
+	*iteration_steps = (long *)calloc(iterations_count, sizeof(long));
+	if (iteration_steps == NULL) {
+		printf("It is not enough free memory for array iteration_steps\n");
+		return false;
+	}
+
+	*iteration_steps_reactive = (long *)calloc(iterations_count, sizeof(long));
+	if (iteration_steps_reactive == NULL) {
+		printf("It is not enough free memory for array iteration_steps\n");
+		return false;
+	}
+
+	*reactive_tabu_size_statistics = (long *)calloc(graph->n_vertices, sizeof(long));
+	if (reactive_tabu_size_statistics == NULL) {
+		printf("It is not enough free memory for array reactive_tabu_size_statistics\n");
+		return false;
+	}
+
+	*index_count = (long *)calloc(graph->n_vertices, sizeof(long));
+	if (index_count == NULL) {
+		printf("It is not enough free memory for array reactive_tabu_size_statistics\n");
+		return false;
+	}
+
+
+	*ultra_reactive_tabu_sizes = (long *)calloc(graph->n_vertices, sizeof(long));
+	if (ultra_reactive_tabu_sizes == NULL) {
+		printf("It is not enough free memory for array ultra_reactive_tabu_size_statistics\n");
+		return false;
+	}
+
+	*elapsed_time = (double *)calloc(iterations_count, sizeof(long));
+	if (elapsed_time == NULL) {
+		printf("It is not enough free memory for array elapsed_time\n");
+		return false;
+	}
+
+	*elapsed_time_reactive = (double *)calloc(iterations_count, sizeof(long));
+	if (elapsed_time_reactive == NULL) {
+		printf("It is not enough free memory for array elapsed_time\n");
+		return false;
+	}
+
+	*elapsed_time_ultra_reactive = (double *)calloc(iterations_count, sizeof(long));
+	if (elapsed_time_ultra_reactive == NULL) {
+		printf("It is not enough free memory for array elapsed_time\n");
+		return false;
+	}
+}
 #pragma endregion
 
 #pragma endregion
