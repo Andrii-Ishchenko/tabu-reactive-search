@@ -21,6 +21,75 @@
     </ClCompile>
     <ClCompile Include="maxcut_tabu_clear_and_reactive.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="G\G1.mtx" />
+    <None Include="G\G10.mtx" />
+    <None Include="G\G11.mtx" />
+    <None Include="G\G12.mtx" />
+    <None Include="G\G13.mtx" />
+    <None Include="G\G14.mtx" />
+    <None Include="G\G15.mtx" />
+    <None Include="G\G16.mtx" />
+    <None Include="G\G17.mtx" />
+    <None Include="G\G18.mtx" />
+    <None Include="G\G19.mtx" />
+    <None Include="G\G2.mtx" />
+    <None Include="G\G20.mtx" />
+    <None Include="G\G21.mtx" />
+    <None Include="G\G22.mtx" />
+    <None Include="G\G23.mtx" />
+    <None Include="G\G24.mtx" />
+    <None Include="G\G25.mtx" />
+    <None Include="G\G26.mtx" />
+    <None Include="G\G27.mtx" />
+    <None Include="G\G28.mtx" />
+    <None Include="G\G29.mtx" />
+    <None Include="G\G3.mtx" />
+    <None Include="G\G30.mtx" />
+    <None Include="G\G31.mtx" />
+    <None Include="G\G32.mtx" />
+    <None Include="G\G33.mtx" />
+    <None Include="G\G34.mtx" />
+    <None Include="G\G35.mtx" />
+    <None Include="G\G36.mtx" />
+    <None Include="G\G37.mtx" />
+    <None Include="G\G38.mtx" />
+    <None Include="G\G39.mtx" />
+    <None Include="G\G4.mtx" />
+    <None Include="G\G40.mtx" />
+    <None Include="G\G41.mtx" />
+    <None Include="G\G42.mtx" />
+    <None Include="G\G43.mtx" />
+    <None Include="G\G44.mtx" />
+    <None Include="G\G45.mtx" />
+    <None Include="G\G46.mtx" />
+    <None Include="G\G47.mtx" />
+    <None Include="G\G48.mtx" />
+    <None Include="G\G49.mtx" />
+    <None Include="G\G5.mtx" />
+    <None Include="G\G50.mtx" />
+    <None Include="G\G51.mtx" />
+    <None Include="G\G52.mtx" />
+    <None Include="G\G53.mtx" />
+    <None Include="G\G54.mtx" />
+    <None Include="G\G55.mtx" />
+    <None Include="G\G56.mtx" />
+    <None Include="G\G57.mtx" />
+    <None Include="G\G58.mtx" />
+    <None Include="G\G59.mtx" />
+    <None Include="G\G6.mtx" />
+    <None Include="G\G60.mtx" />
+    <None Include="G\G61.mtx" />
+    <None Include="G\G62.mtx" />
+    <None Include="G\G63.mtx" />
+    <None Include="G\G64.mtx" />
+    <None Include="G\G65.mtx" />
+    <None Include="G\G66.mtx" />
+    <None Include="G\G67.mtx" />
+    <None Include="G\G7.mtx" />
+    <None Include="G\G8.mtx" />
+    <None Include="G\G9.mtx" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{60D60E91-71C4-436C-A0CC-E399B20DDC7F}</ProjectGuid>
     <RootNamespace>tabu</RootNamespace>
