@@ -32,7 +32,7 @@ struct history_s {
 	long stored_f_count = 0;
 
 	long previous_solution_found_count = 0;
-	long max_steps = 0;
+	long max_steps = 15000000;//size of history
 	long* best_x;
 	long best_f;
 	long best_f_step;
@@ -42,6 +42,7 @@ struct history_s {
 
 struct test_params_s {
 	char** dateTimePrefix;
+	char** alg_name;
 	clock_t start,current, finish;
 	bool is_time_stop_condition = true;
 	long iterations_count = 5;
@@ -102,8 +103,8 @@ long rand_seed;
 
 #pragma region Helper_Functions
 
-bool runCondition(clock_t* current, clock_t finish) {
-	return ( *current = clock() < finish);
+bool runCondition(test_params_s* params) {
+	return ( params->current = clock() < params->finish);
 }
 
 bool runCondition_steps(long step, long max_steps) {
@@ -320,18 +321,22 @@ long check_solution(double key, long f, struct history_s *h)
 	return 0;
 }
 
-void tabu_size_log_reactive(graph_s* graph, reactive_s* reactive,history_s* history, long iteration_test_count, long steps) {
+void tabu_size_log_reactive(graph_s* graph, reactive_s* reactive,history_s* history,int iteration_index, long iteration_test_count, long steps) {
 	FILE *file;
-
+	char intstring[4];
 	long sum = 0;
+
 	for (int i = 0; i < graph->n_vertices; i++) {
 		sum += i*reactive->size_statistics[i];
 	}
 
-	double mean = (double)sum / (iteration_test_count*steps);
+	double mean = (double)sum / (steps);//double mean = (double)sum / (iteration_test_count*steps);
 
 	strcpy_s(path, "d:\\data_maxcut\\results\\reactive_tabu\\size-");
 	strcat_s(path, datetimeprefix);
+	strcat(path, "-");
+	sprintf(intstring, "%d", iteration_index);
+	strcat(path, intstring);
 	strcat(path, ".txt");
 	fopen_s(&file, path, "w");
 
@@ -365,21 +370,6 @@ void graph_move_index_log(long n_vertices, long step,long* index_count ) {
 void graph_move_index_log_reactive(long n_vertices, long step, long* index_count) {
 	FILE *file;
 	strcpy_s(path, "d:\\data_maxcut\\results\\reactive_tabu\\index_stats-");
-	strcat_s(path, datetimeprefix);
-	strcat(path, ".txt");
-	fopen_s(&file, path, "w");
-
-	fprintf_s(file, "Total steps: %ld\n", step);
-	for (int i = 0; i < n_vertices; i++) {
-		fprintf(file, "%ld,\t%ld;\n", i, index_count[i]);
-	}
-	fclose(file);
-}
-
-void graph_move_index_log_ultra_reactive(long n_vertices, long step, long* index_count) {
-	FILE *file;
-
-	strcpy_s(path, "d:\\data_maxcut\\results\\ultra_reactive_tabu\\index_stats-");
 	strcat_s(path, datetimeprefix);
 	strcat(path, ".txt");
 	fopen_s(&file, path, "w");
@@ -592,11 +582,15 @@ bool allocateMemory(graph_s* graph, history_s* history, config_s* config, test_p
 bool allocate_reactive(graph_s* graph, history_s* history, config_s* config, test_params_s* params, test_history_s* test_history, reactive_s* reactive) {
 	reactive->tabu_sizes = (long *)calloc(graph->n_vertices, sizeof(long));
 	if (reactive->tabu_sizes == NULL) {
-		printf("It is not enough free memory for array reactive_tabu_size_statistics\n");
+		printf("It is not enough free memory for array reactive_tabu_sizes\n");
 		return false;
 	}
 
-
+	reactive->size_statistics = (long*)calloc(graph->n_vertices, sizeof(long));
+	if (reactive->size_statistics == NULL) {
+		printf("It is not enough free memory for array reactive_tabu_size_statistics\n");
+		return false;
+	}
 	return true;
 }
 
@@ -669,6 +663,40 @@ void fetch_data_2_columns(graph_s *graph) {
 	fclose(file);
 }
 
+void init(graph_s* graph, history_s *history, config_s *config, test_params_s *params, test_history_s *test_history) {
+	initRandom();
+
+	for (int i = 0; i < graph->n_vertices; i++) {
+		(config->last_used)[i] = -3 * graph->n_vertices;
+	}
+
+	for (int i = 0; i < graph->n_vertices; i++) {
+		history->hashes[i] = getStandardRandom() * 100;
+	}
+
+	//Generating random starting vector x;
+	for (int i = 0; i < graph->n_vertices; i++) {
+		if (getStandardRandom() > 0.5) {
+			config->x[i] = 1;
+			history->best_x[i] = 1;
+		}
+		else {
+			config->x[i] = 0;
+			history->best_x[i] = 0;
+		}
+	}
+
+	config->f = F(graph, config->x, graph->edges);
+	history->best_f = config->f;
+	config->x_key = getKey(history, graph, config);
+
+	config->step = 0;
+	history->best_f_step = 0;
+	history->stored_f_count = 0;
+	history->tabu_change_t = 0;
+	params->start = clock();
+	params->finish = params->start + CLOCKS_PER_SEC * (params->test_time_seconds);
+}
 
 #pragma endregion
 
@@ -782,7 +810,7 @@ void reactive_tabu(graph_s* graph, history_s* history, config_s* config, test_pa
 	{
 		save_solution(x_key, config->f, history, config->step);
 
-		if (config->step - history->tabu_change_t > 125)
+		if (config->step - history->tabu_change_t > 100)
 		{
 			history->tabu_change_t = config->step;
 			Decrease(&(config->tabu_size), graph->n_vertices);
@@ -795,6 +823,7 @@ void reactive_tabu(graph_s* graph, history_s* history, config_s* config, test_pa
 
 	(config->step)++;
 
+#pragma omp parallel for num_threads(16)
 	for (int i = 0; i < graph->n_vertices; i++) {
 		config->neighbourhood_values[i] = Fdelta(config->x, i, graph);
 
@@ -1037,54 +1066,24 @@ void test_tabu(graph_s* graph, history_s *history, config_s *config, test_params
 		printf("Restart %d : \t", i + 1);
 
 #pragma region Initialization
-		initRandom();
-
-		for (int i = 0; i < graph->n_vertices; i++) {
-			(config->last_used)[i] = -3 * graph->n_vertices;
-		}
-
-		for (int i = 0; i < graph->n_vertices; i++) {
-			history->hashes[i] = getStandardRandom() * 100;
-		}
-
-		//Generating random starting vector x;
-		for (int i = 0; i < graph->n_vertices; i++) {
-			if (getStandardRandom() > 0.5) {
-				config->x[i] = 1;
-				history->best_x[i] = 1;
-			}
-			else {
-				config->x[i] = 0;
-				history->best_x[i] = 0;
-			}
-		}
-
-		config->f = F(graph, config->x, graph->edges);
-		history->best_f = config->f;
-		config->x_key = getKey(history,graph, config);
-
-		config->step = 0;
-		history->best_f_step = 0;
-		history->stored_f_count = 0;
-		history->tabu_change_t = 0;
-		params->start = clock();
-		params->finish = params->start + CLOCKS_PER_SEC * (params->test_time_seconds);
+		init(graph,history,config,params,test_history);
 #pragma endregion
 
 #pragma region Main_Loop
 
-		while (runCondition(&(params->current),params->finish)) 
+		while (runCondition(params)) 
 		{
 			tabu(graph,history,config,params,test_history);
 		}
 
 		(test_history->elapsed_time)[i] = (clock() - params->start) / CLOCKS_PER_SEC;
 		test_history->iteration_steps[i] = config->step;
+		test_history->iteration_bestf[i] = history->best_f;
 #pragma endregion
 
 #pragma region Results
 		printf("Best F:%ld\tIterations: %ld\tTime: %f\n", history->best_f, test_history->iteration_steps[i], test_history->elapsed_time[i]);
-		test_history->iteration_bestf[i] = history->best_f;
+
 
 		if (history->best_f > test_history->best_known_f) {
 			test_history->best_known_f = history->best_f;
@@ -1111,7 +1110,83 @@ void test_tabu(graph_s* graph, history_s *history, config_s *config, test_params
 
 }
 
-void test_tabu_reactive();
+void test_tabu_reactive(graph_s* graph, history_s *history, config_s *config, test_params_s *params, test_history_s *test_history, reactive_s* reactive) {
+	FILE* file;
+
+	printf("====================REACTIVE====================\n");
+	printf("Start tabu size: %ld\n", config->tabu_size);
+	printf("Restarts:%d\n", params->iterations_count);
+	if (params->is_time_stop_condition)
+		printf("Time per iteration, s. : %ld\n", params->test_time_seconds);
+	else
+		printf("Steps till restart : %ld\n", params->max_steps);
+
+	strcpy_s(path, "d:\\data_maxcut\\results\\reactive_tabu\\log-");
+	strcat_s(path, datetimeprefix);
+	strcat(path, ".txt");
+
+	fopen_s(&file, path, "a");
+
+	fprintf_s(file, "====================REACTIVE====================\n");
+	//fprintf_s(file, "Start tabu size: %ld\n", config->tabu_size); NOT RELEVANT ANYMORE
+	fprintf_s(file, "Restarts:%d\n", params->iterations_count);
+	if (params->is_time_stop_condition)
+		fprintf_s(file, "Time per iteration, s. : %ld\n", params->test_time_seconds);
+	else
+		fprintf_s(file, "Steps till restart : %ld\n", params->max_steps);
+	fprintf_s(file, "\nIndex\tF\tSteps\tTime\n");
+	fclose(file);
+
+	for (int i = 0; i < params->iterations_count; i++) {
+		printf("Restart %d : \t", i + 1);
+
+#pragma region Initialization
+		init(graph, history, config, params, test_history);
+#pragma endregion
+
+#pragma region Main_Loop
+
+		while (runCondition(params)) {
+			reactive_tabu(graph, history, config, params, test_history, reactive);
+		}
+
+		test_history->elapsed_time[i] = (clock() - params->start) / CLOCKS_PER_SEC;
+		test_history->iteration_steps[i] = config->step;
+		test_history->iteration_bestf[i] = history->best_f;
+#pragma endregion
+
+#pragma region Results
+		
+		printf("Best F:%ld\tIterations: %ld\tTime: %f\n", history->best_f, test_history->iteration_steps[i], test_history->elapsed_time[i]);
+
+		if (history->best_f > test_history->best_known_f) {
+			test_history->best_known_f = history->best_f;
+			if (file != NULL)
+				fclose(file);
+
+			strcpy_s(path, "d:\\data_maxcut\\G37_bks.txt");
+			fopen_s(&file, path, "w");
+			fprintf_s(file, "%ld", history->best_f);
+			fclose(file);
+		}
+
+		printResultToFile(graph->n_vertices, history->best_f,history->best_x,i, "reactive_tabu");
+
+		strcpy_s(path, "d:\\data_maxcut\\results\\reactive_tabu\\log-");
+		strcat_s(path, datetimeprefix);
+		strcat(path, ".txt");
+
+		appendIterationResult(i + 1, history->best_f,test_history->iteration_steps[i],test_history->elapsed_time[i], path);
+
+		graph_move_index_log_reactive(graph->n_vertices,config->step,history->index_count);
+		tabu_size_log_reactive(graph,reactive,history,i,params->iterations_count,config->step);
+#pragma endregion
+
+	}
+
+#pragma endregion
+
+}
 
 void test_tabu_ultra_reactive();
 #pragma endregion
@@ -1126,6 +1201,7 @@ void main()
 	config_s* config = new config_s();
 	test_params_s* params = new test_params_s();
 	test_history_s* test_history = new test_history_s();
+	reactive_s* reactive = new reactive_s();
 #pragma endregion
 
 #pragma region Fetch_Graph_Properties
@@ -1142,6 +1218,9 @@ void main()
 if (!allocateMemory(graph,history,config,params,test_history))
 	goto NOT_ENOUGH_FREE_MEMORY;
 
+if (!allocate_reactive(graph, history, config, params, test_history, reactive))
+	goto NOT_ENOUGH_FREE_MEMORY;
+
 #pragma endregion 
 
 #pragma region Fetching_Data
@@ -1150,7 +1229,8 @@ if (!allocateMemory(graph,history,config,params,test_history))
 	
 #pragma endregion
 
-	test_tabu(graph, history, config, params, test_history);
+	//test_tabu(graph, history, config, params, test_history);
+	test_tabu_reactive(graph, history, config, params, test_history, reactive);
 
 /*
 	#pragma region testing_reactive_tabu
@@ -1429,6 +1509,7 @@ delete history;
 delete config;
 delete params;
 delete test_history;
+delete reactive;
 
 #pragma endregion
 
