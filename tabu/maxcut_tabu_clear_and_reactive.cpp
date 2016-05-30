@@ -46,8 +46,8 @@ struct test_params_s {
 	char* alg_name;
 	clock_t start,current, finish;
 	bool is_time_stop_condition = true;
-	long iterations_count = 5;
-	long test_time_seconds = 2;
+	long iterations_count = 1;
+	long test_time_seconds = 30;
 	long max_steps = 15000000;
 };
 
@@ -421,19 +421,27 @@ void addDateTimePrefixToFileName(char* dest, const char* first, const char* seco
 	strcat(dest, second);
 }
 
-void printResultToFile(long n_vertices,long best_f, long* best_x, int ind, const char* alg_name, char* dateTimePrefix) {
+void printResultToFile(long n_vertices,long best_f, long* best_x, int ind,char* test_folder_path) {
 	char intstring[4];
 	char path[200];
 	FILE *f;
 
-	strcpy(path, "d:\\data_maxcut\\results\\");
+	strcpy(path, test_folder_path);
+	strcat(path, "\\best_x-");
+	sprintf(intstring, "%d", ind);
+	strcat(path, intstring);
+	strcat(path, ".txt");
+
+
+
+	/*strcpy(path, "d:\\data_maxcut\\results\\");
 	strcat(path, alg_name);
 	strcat(path, "\\best_x-");
 	strcat(path, dateTimePrefix);
 	strcat(path, "-");
 	sprintf(intstring, "%d", ind);
 	strcat(path, intstring);
-	strcat(path, ".txt");
+	strcat(path, ".txt");*/
 	fopen_s(&f, path, "w");
 
 	fprintf_s(f, "=====F=====\n%ld\n=====X=====\n", best_f);
@@ -646,7 +654,6 @@ bool is_graph_has_bool_weights(int i) {
 	return (i >= 7 && i <= 13) || (i >= 18 && i <= 21) || (i >= 27 && i <= 34) || (i >= 39 && i <= 42);
 }
 
-
 void create_history_folder_paths(test_history_s *test_history) {
 	char* path = new char[100];
 
@@ -790,6 +797,9 @@ void cleanup(graph_s* graph, history_s *history, config_s *config, test_params_s
 	delete history;
 	delete graph;
 }
+
+//TODO: rename and implement function to clear history values between iterations
+void reinit(){}
 #pragma endregion
 
 #pragma region ALGORITHMS
@@ -1188,7 +1198,7 @@ void test_tabu(graph_s* graph, history_s *history, config_s *config, test_params
 		if (file != NULL)
 			fclose(file);
 
-		printResultToFile(graph->n_vertices,history->best_f,history->best_x,i, "tabu", params->dateTimePrefix);
+		printResultToFile(graph->n_vertices,history->best_f,history->best_x,i, test_history->test_folder_path);
 		addDateTimePrefixToFileName(path, "d:\\data_maxcut\\results\\tabu\\log-", ".txt", params->dateTimePrefix);
 		appendIterationResult(i + 1, history->best_f, test_history->iteration_steps[i], test_history->elapsed_time[i], path);
 		graph_move_index_log(graph->n_vertices,config->step, history->index_count,params->dateTimePrefix);
@@ -1260,6 +1270,7 @@ void test_tabu_reactive(graph_s* graph, history_s *history, config_s *config, te
 			strcpy_s(path, BEST_KNOWN);
 			strcat(path, "G");
 			sprintf(intstr, "%d", graph->g_number);
+			strcat(path, intstr);
 			strcat(path, ".txt");
 
 			fopen_s(&file, path, "w");
@@ -1267,7 +1278,7 @@ void test_tabu_reactive(graph_s* graph, history_s *history, config_s *config, te
 			fclose(file);
 		}
 
-		printResultToFile(graph->n_vertices, history->best_f,history->best_x,i, "reactive_tabu",params->dateTimePrefix);
+		printResultToFile(graph->n_vertices, history->best_f,history->best_x,i, test_history->test_folder_path);
 
 		//strcpy_s(path, "d:\\data_maxcut\\results\\reactive_tabu\\log-");
 		//strcat_s(path, params->dateTimePrefix);
@@ -1353,7 +1364,7 @@ void test_tabu_ultra_reactive(graph_s* graph, history_s *history, config_s *conf
 			fclose(file);
 		}
 
-		printResultToFile(graph->n_vertices, history->best_f, history->best_x, i, "ultra_reactive_tabu",params->dateTimePrefix);
+		printResultToFile(graph->n_vertices, history->best_f, history->best_x, i, test_history->test_folder_path);
 
 		strcpy_s(path, "d:\\data_maxcut\\results\\ultra_reactive_tabu\\log-");
 		strcat_s(path, params->dateTimePrefix);
