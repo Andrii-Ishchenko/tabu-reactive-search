@@ -35,9 +35,9 @@ struct history_s {
 	long previous_solution_found_count = 0;
 	long max_steps = 15000000;//size of history
 	long* best_x;
-	long best_f;
-	long best_f_step;
-	long tabu_change_t;
+	long best_f = MINLONG;
+	long best_f_step = 0;
+	long tabu_change_t = 0;
 	long* index_count;		//a[i] = number of i index changes.
 };
 
@@ -46,8 +46,8 @@ struct test_params_s {
 	char* alg_name;
 	clock_t start,current, finish;
 	bool is_time_stop_condition = true;
-	long iterations_count = 1;
-	long test_time_seconds = 30;
+	long iterations_count = 3;
+	long test_time_seconds = 20;
 	long max_steps = 15000000;
 };
 
@@ -64,7 +64,7 @@ struct config_s {
 	long* x;
 	double x_key;
 	long f;
-	long tabu_size = 75;
+	long tabu_size = 50;
 	long step;
 	long* last_used;
 	bool* neighbourhood;
@@ -452,83 +452,8 @@ void printResultToFile(long n_vertices,long best_f, long* best_x, int ind,char* 
 }
 #pragma endregion
 
-bool allocateMemory(graph_s* graph, history_s* history, config_s* config, test_params_s* params, test_history_s* test_history) {
-	config->x = (long *)calloc(graph->n_vertices, sizeof(long));
-	if (config->x == NULL) {
-		printf("It is not enough free memory for x\n");
-		return false;
-	}
-
-	history->best_x = (long *)calloc(graph->n_vertices, sizeof(long));
-	if (history->best_x == NULL) {
-		printf("It is not enough free memory for best_x\n");
-		return false;
-	}
-
-	config->last_used = (long *)calloc(graph->n_vertices, sizeof(long));
-	if (config->last_used == NULL) {
-		printf("It is not enough free memory for array last_used\n");
-		return false;
-	}
-
-	config->neighbourhood = (bool *)calloc(graph->n_vertices, sizeof(bool));
-	if (config->neighbourhood == NULL) {
-		printf("It is not enough free memory for array neighbourhood\n");
-		return false;
-	}
-
-	config->neighbourhood_values = (long *)calloc(graph->n_vertices, sizeof(long));
-	if (config->neighbourhood_values == NULL) {
-		printf("It is not enough free memory for array neighbourhood_values\n");
-		return false;
-	}
-
-#pragma region history
-	history->keys = (double *)calloc(history->max_steps, sizeof(double));
-	if (history->keys == NULL) {
-		printf("It is not enough free memory for array keyar\n");
-		return false;
-	}
-
-	history->f_values = (long *)calloc(history->max_steps, sizeof(long));
-	if (history->f_values == NULL) {
-		printf("It is not enough free memory for array f_values\n");
-		return false;
-	}
-
-	history->left = (long *)calloc(history->max_steps, sizeof(long));
-	if (history->left == NULL) {
-		printf("It is not enough free memory for array left\n");
-		return false;
-	}
-
-	history->right = (long *)calloc(history->max_steps, sizeof(long));
-	if (history->right == NULL) {
-		printf("It is not enough free memory for array right\n");
-		return false;
-	}
-
-	history->occurence_time = (long *)calloc(history->max_steps, sizeof(long));
-	if (history->occurence_time == NULL) {
-		printf("It is not enough free memory for array occurence_count\n");
-		return false;
-	}
-
-	history->hashes = (double *)calloc(graph->n_vertices, sizeof(double));
-	if (history->hashes == NULL) {
-		printf("It is not enough free memory for array hashes\n");
-		return false;
-	}
-
-	history->index_count = (long *)calloc(graph->n_vertices, sizeof(long));
-	if (history->index_count == NULL) {
-		printf("It is not enough free memory for array reactive_tabu_size_statistics\n");
-		return false;
-	}
-
-#pragma endregion
-
-#pragma region graph
+#pragma region MEMORY
+bool allocate_graph(graph_s* graph) {
 	graph->edges = (int **)calloc(graph->n_vertices, sizeof(int *));
 	if (graph->edges == NULL) {
 		printf("It is not enough free memory for array edges\n");
@@ -572,22 +497,102 @@ bool allocateMemory(graph_s* graph, history_s* history, config_s* config, test_p
 		printf("It is not enough free memory for array edge_weight\n");
 		return false;
 	}
+	return true;
+}
 
-#pragma endregion
+bool allocate_history(history_s* history, int n_vertices) {
+	history->keys = (double *)calloc(history->max_steps, sizeof(double));
+	if (history->keys == NULL) {
+		printf("It is not enough free memory for array keyar\n");
+		return false;
+	}
 
-	test_history->iteration_bestf = (long *)calloc(params->iterations_count, sizeof(long));
+	history->f_values = (long *)calloc(history->max_steps, sizeof(long));
+	if (history->f_values == NULL) {
+		printf("It is not enough free memory for array f_values\n");
+		return false;
+	}
+
+	history->left = (long *)calloc(history->max_steps, sizeof(long));
+	if (history->left == NULL) {
+		printf("It is not enough free memory for array left\n");
+		return false;
+	}
+
+	history->right = (long *)calloc(history->max_steps, sizeof(long));
+	if (history->right == NULL) {
+		printf("It is not enough free memory for array right\n");
+		return false;
+	}
+
+	history->occurence_time = (long *)calloc(history->max_steps, sizeof(long));
+	if (history->occurence_time == NULL) {
+		printf("It is not enough free memory for array occurence_count\n");
+		return false;
+	}
+
+	history->hashes = (double *)calloc(n_vertices, sizeof(double));
+	if (history->hashes == NULL) {
+		printf("It is not enough free memory for array hashes\n");
+		return false;
+	}
+
+	history->index_count = (long *)calloc(n_vertices, sizeof(long));
+	if (history->index_count == NULL) {
+		printf("It is not enough free memory for array reactive_tabu_size_statistics\n");
+		return false;
+	}
+
+	history->best_x = (long *)calloc(n_vertices, sizeof(long));
+	if (history->best_x == NULL) {
+		printf("It is not enough free memory for best_x\n");
+		return false;
+	}
+
+	return true;
+}
+
+bool allocate_config(config_s* config, int n_vertices) {
+	config->x = (long *)calloc(n_vertices, sizeof(long));
+	if (config->x == NULL) {
+		printf("It is not enough free memory for x\n");
+		return false;
+	}
+
+	config->last_used = (long *)calloc(n_vertices, sizeof(long));
+	if (config->last_used == NULL) {
+		printf("It is not enough free memory for array last_used\n");
+		return false;
+	}
+
+	config->neighbourhood = (bool *)calloc(n_vertices, sizeof(bool));
+	if (config->neighbourhood == NULL) {
+		printf("It is not enough free memory for array neighbourhood\n");
+		return false;
+	}
+
+	config->neighbourhood_values = (long *)calloc(n_vertices, sizeof(long));
+	if (config->neighbourhood_values == NULL) {
+		printf("It is not enough free memory for array neighbourhood_values\n");
+		return false;
+	}
+	return true;
+}
+
+bool allocate_test_history(test_history_s* test_history, long iterations_count) {
+	test_history->iteration_bestf = (long *)calloc(iterations_count, sizeof(long));
 	if (test_history->iteration_bestf == NULL) {
 		printf("It is not enough free memory for array iteration_bestf\n");
 		return false;
 	}
 
-	test_history->iteration_steps = (long *)calloc(params->iterations_count, sizeof(long));
+	test_history->iteration_steps = (long *)calloc(iterations_count, sizeof(long));
 	if (test_history->iteration_steps == NULL) {
 		printf("It is not enough free memory for array iteration_steps\n");
 		return false;
 	}
 
-	test_history->elapsed_time = (double *)calloc(params->iterations_count, sizeof(long));
+	test_history->elapsed_time = (double *)calloc(iterations_count, sizeof(double));
 	if (test_history->elapsed_time == NULL) {
 		printf("It is not enough free memory for array elapsed_time\n");
 		return false;
@@ -596,20 +601,101 @@ bool allocateMemory(graph_s* graph, history_s* history, config_s* config, test_p
 	return true;
 }
 
-bool allocateMemory_reactive(graph_s* graph, history_s* history, config_s* config, test_params_s* params, test_history_s* test_history, reactive_s* reactive) {
-	reactive->tabu_sizes = (long *)calloc(graph->n_vertices, sizeof(long));
+bool allocate_reactive(reactive_s* reactive, int n_vertices) {
+	reactive->tabu_sizes = (long *)calloc(n_vertices, sizeof(long));
 	if (reactive->tabu_sizes == NULL) {
 		printf("It is not enough free memory for array reactive_tabu_sizes\n");
 		return false;
 	}
 
-	reactive->size_statistics = (long*)calloc(graph->n_vertices, sizeof(long));
+	reactive->size_statistics = (long*)calloc(n_vertices, sizeof(long));
 	if (reactive->size_statistics == NULL) {
 		printf("It is not enough free memory for array reactive_tabu_size_statistics\n");
 		return false;
 	}
 	return true;
 }
+
+bool allocateMemory(graph_s* graph, history_s* history, config_s* config, test_params_s* params, test_history_s* test_history,reactive_s* reactive) {
+
+	if (!allocate_graph(graph))
+		return false;
+
+	if (!allocate_history(history, graph->n_vertices))
+		return false;
+
+	if (!allocate_config(config, graph->n_vertices))
+		return false;
+
+	if (!allocate_test_history(test_history, params->iterations_count))
+		return false;
+
+	if (!allocate_reactive(reactive, graph->n_vertices))
+		return false;
+	
+	return true;
+}
+
+void free_graph(graph_s* graph) {
+	for (int i = 0; i < graph->n_vertices; i++) {
+		free(graph->edges[i]);
+	}
+	free(graph->edges);
+	free(graph->edge_weight);
+	free(graph->beg_list_edges_var);
+	free(graph->list_edges_var);
+	free(graph->list_nodes_var);
+	free(graph->n_con_edges);
+}
+
+void free_history(history_s* history) {
+	free(history->best_x);
+	free(history->f_values);
+	free(history->hashes);
+	free(history->index_count);
+	free(history->keys);
+	free(history->left);
+	free(history->right);
+	free(history->occurence_time);
+}
+
+void free_config(config_s* config) {
+	free(config->x);
+	free(config->last_used);
+	free(config->neighbourhood);
+	free(config->neighbourhood_values);
+}
+
+void free_test_history(test_history_s* test_history) {
+
+	free(test_history->iteration_bestf);
+	free(test_history->iteration_steps);
+	free(test_history->elapsed_time);
+}
+
+void free_reactive(reactive_s* reactive) {
+	free(reactive->tabu_sizes);
+	free(reactive->size_statistics);
+}
+
+void cleanup(graph_s* graph, history_s *history, config_s *config, test_params_s *params, test_history_s *test_history, reactive_s *reactive) {
+	free_reactive(reactive);
+	free_test_history(test_history);
+	free_config(config);
+	free_history(history);
+	free_graph(graph);
+}
+
+void iteration_cleanup(graph_s* graph, history_s *history, config_s *config, test_params_s *params, test_history_s *test_history, reactive_s *reactive) {
+	free_history(history);
+	allocate_history(history, graph->n_vertices);
+	history->stored_f_count = 0;
+	history->best_f = MINLONG;
+	history->best_f_step = 0;
+	history->previous_solution_found_count = 0;
+	history->tabu_change_t = 0;
+}
+#pragma endregion
 
 char* get_graph_path(int graph_number) {
 	char* buffer = new char[100];
@@ -651,7 +737,7 @@ void fetch_properties(graph_s *graph, long *best_known_f,int graph_number) {
 }
 
 bool is_graph_has_bool_weights(int i) {
-	return (i >= 7 && i <= 13) || (i >= 18 && i <= 21) || (i >= 27 && i <= 34) || (i >= 39 && i <= 42);
+	return (i >= 6 && i <= 13) || (i >= 18 && i <= 21) || (i >= 27 && i <= 34) || (i >= 39 && i <= 42);
 }
 
 void create_history_folder_paths(test_history_s *test_history) {
@@ -664,6 +750,7 @@ void create_history_folder_paths(test_history_s *test_history) {
 	strcpy(test_history->test_folder_path, path);
 
 	CreateDirectory(test_history->test_folder_path, NULL);
+	delete[] path;
 }
 
 void fetch(graph_s* graph) {
@@ -789,17 +876,8 @@ void init(graph_s* graph, history_s *history, config_s *config, test_params_s *p
 	params->dateTimePrefix = getDateTimePrefix();
 }
 
-void cleanup(graph_s* graph, history_s *history, config_s *config, test_params_s *params, test_history_s *test_history, reactive_s *reactive) {
-	delete reactive;
-	delete test_history;
-	delete params;
-	delete config;
-	delete history;
-	delete graph;
-}
-
 //TODO: rename and implement function to clear history values between iterations
-void reinit(){}
+
 #pragma endregion
 
 #pragma region ALGORITHMS
@@ -1215,6 +1293,7 @@ void test_tabu_reactive(graph_s* graph, history_s *history, config_s *config, te
 	char intstr[4];
 
 	printf("====================REACTIVE====================\n");
+	printf("Graph: G%d\n", graph->g_number);
 	printf("Start tabu size: %ld\n", config->tabu_size);
 	printf("Restarts:%d\n", params->iterations_count);
 	if (params->is_time_stop_condition)
@@ -1226,13 +1305,23 @@ void test_tabu_reactive(graph_s* graph, history_s *history, config_s *config, te
 	
 	create_history_folder_paths(test_history);
 
+	//indicative file
+	strcpy_s(path, test_history->test_folder_path);
+	strcat(path, "\\G");
+	sprintf(intstr, "%d", graph->g_number);
+	strcat(path, intstr);
+	strcat(path, ".name");
+	fopen_s(&file, path, "w");
+	fclose(file);
+
 	strcpy_s(path, test_history->test_folder_path);
 	strcat(path, "\\");
 	strcat(path, "log.txt");
 
 	fopen_s(&file, path, "a");
 
-	fprintf_s(file, "====================REACTIVE====================\n");	
+	fprintf_s(file, "====================REACTIVE====================\n");
+	fprintf_s(file,"Graph: G%d\n", graph->g_number);
 	fprintf_s(file, "Restarts:%d\n", params->iterations_count);
 	if (params->is_time_stop_condition)
 		fprintf_s(file, "Time per iteration, s. : %ld\n", params->test_time_seconds);
@@ -1247,9 +1336,13 @@ void test_tabu_reactive(graph_s* graph, history_s *history, config_s *config, te
 		init(graph, history, config, params, test_history);
 
 #pragma region Main_Loop
-
-		while (runCondition(params)) {
-			reactive_tabu(graph, history, config, params, test_history, reactive);
+		if (params->is_time_stop_condition) {
+			while (runCondition(params))
+				reactive_tabu(graph, history, config, params, test_history, reactive);
+		}
+		else {
+			while (runCondition_steps(config->step, history->max_steps))
+				reactive_tabu(graph, history, config, params, test_history, reactive);
 		}
 
 		test_history->elapsed_time[i] = (clock() - params->start) / (double)CLOCKS_PER_SEC;
@@ -1291,6 +1384,7 @@ void test_tabu_reactive(graph_s* graph, history_s *history, config_s *config, te
 		appendIterationResult(i + 1, history->best_f,test_history->iteration_steps[i],test_history->elapsed_time[i], path);
 		graph_move_index_log_reactive(graph->n_vertices,i,history->index_count,test_history->test_folder_path);
 		tabu_size_log_reactive(i,params->iterations_count,config->step, graph->n_vertices,reactive->size_statistics, test_history->test_folder_path, history->previous_solution_found_count);
+		iteration_cleanup(graph, history, config, params, test_history, reactive);
 #pragma endregion
 
 	}
@@ -1386,29 +1480,28 @@ void main()
 {
 	FILE *file;
 
+	for (int g = 1; g <= 54; g++) {
 
-	graph_s* graph = new graph_s();
-	history_s* history = new history_s();
-	config_s* config = new config_s();
-	test_params_s* params = new test_params_s();
-	test_history_s* test_history = new test_history_s();
-	reactive_s* reactive = new reactive_s();
+		graph_s* graph = &graph_s();
+		history_s* history = &history_s();
+		config_s* config = &config_s();
+		test_params_s* params = &test_params_s();
+		test_history_s* test_history = &test_history_s();
+		reactive_s* reactive = &reactive_s();
 
-	fetch_properties(graph, &(test_history->best_known_f), 12);
+		fetch_properties(graph, &(test_history->best_known_f), g);
 
-	//strcpy_s(datetimeprefix, getDateTimePrefix());
+		if (!allocateMemory(graph, history, config, params, test_history, reactive))
+			goto NOT_ENOUGH_FREE_MEMORY;
 
-	if (!allocateMemory(graph,history,config,params,test_history))
-		goto NOT_ENOUGH_FREE_MEMORY;
+		fetch(graph);
 
-	if (!allocateMemory_reactive(graph, history, config, params, test_history, reactive))
-		goto NOT_ENOUGH_FREE_MEMORY;
+		test_tabu_reactive(graph, history, config, params, test_history, reactive);
+		Sleep(1000);
+		cleanup(graph, history, config, params, test_history, reactive);
+		Sleep(1000);
+	}
 
-	fetch(graph);
-
-	test_tabu_reactive(graph, history, config, params, test_history, reactive);
-
-	cleanup(graph, history, config, params, test_history, reactive);
 	
 NOT_ENOUGH_FREE_MEMORY :
 	system("pause");			
