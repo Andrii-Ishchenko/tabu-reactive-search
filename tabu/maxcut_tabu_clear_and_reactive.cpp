@@ -46,8 +46,8 @@ struct test_params_s {
 	char* alg_name;
 	clock_t start,current, finish;
 	bool is_time_stop_condition = true;
-	long iterations_count = 5;
-	long test_time_seconds = 15;
+	long iterations_count = 20;
+	long test_time_seconds = 3;
 	long max_steps = 15000000;
 	char* f_file_path;
 };
@@ -85,7 +85,7 @@ struct reactive_s {
 
 #pragma region CONST
 const double eps = 0.00001;
-const int UR_multiplier = 150000;
+int UR_multiplier = 75000;
 
 const char* GRAPHS = "D:\\data_maxcut\\graphs\\";
 
@@ -1027,14 +1027,14 @@ void reactive_tabu(graph_s* graph, history_s* history, config_s* config, test_pa
 			config->f = config->f + best_neighbour_delta_f;
 			config->x[best_neighbour_index] = !((config->x)[best_neighbour_index]);
 			config->last_used[best_neighbour_index] = config->step;
-			history->index_count[best_neighbour_index]++;
+			(history->index_count)[best_neighbour_index]++;
 		}
 		else
 		{
 			config->f = config->f + best_neighbour_ac_delta_value;
 			config->x[best_neighbour_ac_index] = !((config->x)[best_neighbour_ac_index]);
 			config->last_used[best_neighbour_ac_index] = config->step;
-			history->index_count[best_neighbour_ac_index]++;
+			(history->index_count)[best_neighbour_ac_index]++;
 		}
 
 	}
@@ -1045,12 +1045,6 @@ void reactive_tabu(graph_s* graph, history_s* history, config_s* config, test_pa
 		config->last_used[best_neighbour_index] = config->step;
 		history->index_count[best_neighbour_index]++;
 	}
-
-	/*if (*step % 50 == 0){
-		printf("Step: %ld \t F: %ld Best F: %ld  Key: %f  Occurence: %ld \t Tabu: %ld\n", *step, best_neighbour_value, *best_f, *x_key,occurence_time[node_index], *tabu_size);
-	}*/
-
-	//copyX(x, best_x, n_vertices);
 
 	if (config->f + best_neighbour_delta_f > history->best_f)
 	{
@@ -1072,7 +1066,7 @@ void ultra_reactive_tabu(graph_s* graph, history_s* history, config_s* config, t
 	long best_neighbour_index = -1, best_neighbour_delta_f = LONG_MIN;
 	long best_neighbour_ac_index = -1;//aspiration criteria: if move can increase best solution but inside tabu : do it.
 	long best_neighbour_ac_delta_f = LONG_MIN;
-	long index, value;
+	long index_to_change;
 	double x_key;
 
 	x_key = getKey(history,graph,config);
@@ -1104,67 +1098,34 @@ void ultra_reactive_tabu(graph_s* graph, history_s* history, config_s* config, t
 
 	if (config->f + best_neighbour_ac_delta_f > history->best_f)
 	{
+		index_to_change = best_neighbour_ac_index;
+
 		if (best_neighbour_delta_f > best_neighbour_ac_delta_f)
 		{
-			config->f += best_neighbour_delta_f;
-			(config->x)[best_neighbour_index] = !((config->x)[best_neighbour_index]);
-			(config->last_used)[best_neighbour_index] = config->step;
-			(history->index_count)[best_neighbour_index]++;
-			update_ur_tabu_size(graph, best_neighbour_index, config->step, reactive->tabu_sizes, history->index_count);
-
-			if ( config->f + best_neighbour_delta_f > history->best_f)
-			{
-				history->best_f_step = config->step;
-				history->best_f = config->f + best_neighbour_delta_f;
-
-				log_f_value(history->best_f,config->step,params);
-
-				for (int ii = 0; ii < graph->n_vertices; ii++)
-					history->best_x[ii] = config->x[ii];
-			}
-
+			index_to_change = best_neighbour_index;
 		}
-		else
-		{
-			config->f += best_neighbour_ac_delta_f;
-			config->x[best_neighbour_ac_index] = !(config->x[best_neighbour_ac_index]);
-			config->last_used[best_neighbour_ac_index] = config->step;
-			history->index_count[best_neighbour_ac_index]++;
-			update_ur_tabu_size(graph,best_neighbour_ac_index, config->step, reactive->tabu_sizes, history->index_count);
-
-			if (config->f + best_neighbour_ac_delta_f > history->best_f)
-			{
-				history->best_f_step = config->step;
-				history->best_f = config->f + best_neighbour_delta_f;
-
-				log_f_value(history->best_f, config->step, params);
-
-				for (int ii = 0; ii < graph->n_vertices; ii++)
-					history->best_x[ii] = config->x[ii];
-			}
-
-		}
-
 	}
 	else
 	{
-		config->f += best_neighbour_delta_f;
-		config->x[best_neighbour_index] = !((config->x)[best_neighbour_index]);
-		config->last_used[best_neighbour_index] = config->step;
-		history->index_count[best_neighbour_index]++;
-		update_ur_tabu_size(graph,best_neighbour_index, config->step, reactive->tabu_sizes, history->index_count);
-
-		if (config->f + best_neighbour_delta_f > history->best_f)
-		{
-			history->best_f_step = config->step;
-			history->best_f = config->f + best_neighbour_delta_f;
-
-			log_f_value(history->best_f, config->step, params);
-
-			for (int ii = 0; ii < graph->n_vertices; ii++)
-				history->best_x[ii] = config->x[ii];
-		}
+		index_to_change = best_neighbour_index;
 	}	
+
+	config->f += config->neighbourhood_values[index_to_change];
+	(config->x)[index_to_change] = !((config->x)[index_to_change]);
+	(config->last_used)[index_to_change] = config->step;
+	(history->index_count)[index_to_change]++;
+	update_ur_tabu_size(graph, index_to_change, config->step, reactive->tabu_sizes, history->index_count);
+
+	if ( config->f > history->best_f)
+	{
+		history->best_f_step = config->step;
+		history->best_f = config->f;
+
+		log_f_value(history->best_f,config->step,params);
+
+		for (int ii = 0; ii < graph->n_vertices; ii++)
+			history->best_x[ii] = config->x[ii];
+	}
 
 	params->current = clock();
 }
@@ -1444,8 +1405,6 @@ void test_tabu_ultra_reactive(graph_s* graph, history_s *history, config_s *conf
 	fopen_s(&file, path, "w");
 	fclose(file);
 
-	
-	
 	strcpy_s(path, test_history->test_folder_path);
 	strcat(path, "\\");
 	strcat(path, "log.txt");
@@ -1467,7 +1426,7 @@ void test_tabu_ultra_reactive(graph_s* graph, history_s *history, config_s *conf
 
 	for (int i = 0; i < params->iterations_count; i++) {
 		printf("Restart %d : \t", i + 1);
-
+	
 		init(graph, history, config, params, test_history);
 
 		strcpy_s(path, test_history->test_folder_path);
@@ -1524,7 +1483,7 @@ void test_tabu_ultra_reactive(graph_s* graph, history_s *history, config_s *conf
 		appendIterationResult(i + 1, history->best_f, test_history->iteration_steps[i], test_history->elapsed_time[i], path);
 
 		//graph_move_index_log_ultra_reactive(graph->n_vertices, config->step, history->index_count); ??? IMPLEMENT  OR REMOVE
-		iteration_cleanup(graph, history, config, params, test_history, reactive);
+		iteration_cleanup(graph, history, config, params, test_history);
 #pragma endregion
 
 	}
@@ -1538,7 +1497,7 @@ void main()
 {
 	FILE *file;
 
-	for (int g = 1; g <= 54; g++) {
+	for (int g = 1; g <= 1; g++) {
 
 		graph_s* graph = &graph_s();
 		history_s* history = &history_s();
